@@ -6,12 +6,13 @@
 #
 # 이미지 이름은 하드코딩이다. `${DOCKER_IMAGE_NAME}`으로 두면 GitHub 변수가 아니라 EC2의 `.env`에서
 # 보간되는데, 그 파일은 ENV 시크릿이 통째로 덮어쓰는 대상이라 키를 늘릴수록 사고 면적이 커진다.
-# Docker Hub 계정이 정해지면 아래 image 줄을 고친다(OPS-W001 T6).
+# 레포 변수 DOCKER_IMAGE_NAME과 같은 값이어야 한다 — 한쪽만 고치면 배포가 옛 이미지를 계속 띄운다.
 name: mcmory
 
 services:
   app:
-    image: CHANGEME/mcmory-backend:latest
+    # private 레포다. EC2가 pull하려면 docker login이 선행돼야 하고 deploy 잡이 그것을 한다
+    image: kwonseok02/mcmory-backend:latest
     container_name: mcmory-app
     depends_on:
       mysql:
