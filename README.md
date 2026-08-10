@@ -164,6 +164,10 @@ docs/{name}         # 문서 작업
   2. 작업 후 `dev`로 PR을 생성합니다.
   3. 리뷰 1명 이상을 받고 `dev`에 병합합니다. `main` 직접 commit 금지.
 
+> **`main`에 push하면 그대로 배포됩니다.** `https://api.cartlab.store`로 자동 배포되므로 `main`은 릴리스할 때만 건드립니다. `dev` 병합은 CI만 돕니다.
+>
+> **PR을 만들 때 base를 `dev`로 명시하세요.** 저장소 기본 브랜치가 `main`이라 base를 비워두면 `main`을 겨냥합니다. `gh pr create --base dev`.
+
 - **커밋 메시지 컨벤션** — **Conventional Commits** 형식입니다. description은 소문자로 시작하고 마침표를 찍지 않습니다. CI의 commitlint가 검사합니다. 1 task = 1 commit.
 
 ```

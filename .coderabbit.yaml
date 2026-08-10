@@ -1,0 +1,112 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# campus-hackathon-2026의 jeongbiseo-backend 설정을 MCMORY에 맞게 다시 썼다. 사본이 아니다 —
+# 그쪽 규칙 다수가 여기서는 거짓이라 그대로 옮기면 리뷰어가 없는 관행을 요구한다.
+# 뺀 것: Lombok 3종(main에서 사용 0건), 계층 폴더 glob(우리는 평면 도메인 패키지라 매치 0),
+# @Enumerated 필수(0건), BaseEntity 상속(0건), Clock 주입(LocalDateTime.now() 직접 호출이 현행),
+# FixedMemberResolver(우리는 CurrentMember), gitmoji 커밋(commitlint가 평문 Conventional Commits 강제).
+#
+# **이 파일의 instruction은 AGENTS.md와 .agents/rules의 요약 사본이다.**
+# 컨벤션 정본이 바뀌면 같은 회차에 이 파일도 갱신할 것.
+
+language: ko-KR
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    # 여러 번 push해도 증분 리뷰가 자동 정지되지 않게 함
+    auto_pause_after_reviewed_commits: 0
+    drafts: false
+    # base_branches는 "기본 브랜치에 더해" 리뷰할 대상이다. 기본이 main이라 여기 적을 필요가 없고,
+    # 일상 작업 base인 dev만 더한다. 이게 없으면 dev 대상 PR이 리뷰를 못 받는다
+    base_branches:
+      - dev
+
+  tools:
+    # 시크릿은 자연어 지시보다 전용 스캐너가 정확하다. application.yml의 의도된 로컬 기본값과
+    # 실제 자격증명을 사람 말로 구분시키면 오탐이 난다
+    gitleaks:
+      enabled: true
+
+  path_instructions:
+    - path: "src/main/java/**/*.java"
+      instructions: |
+        MCMORY 백엔드 공통 규칙:
+        - Java 17 계약이다. List.getFirst()나 SequencedCollection 같은 Java 21 API 사용을 지적한다.
+        - Spring Boot 4라 Jackson 3다. com.fasterxml.jackson.databind.ObjectMapper 주입을 지적한다
+          (tools.jackson.databind로 써야 한다). 컴파일은 되고 기동에서 No qualifying bean으로 죽는다.
+          JsonNode.asText()는 asString()이다.
+        - 이 프로젝트는 Lombok을 쓰지 않는다. @Getter, @Builder, @NoArgsConstructor, @Data 도입을 권하지 않는다.
+        - @Entity는 평문 Java에 protected 기본 생성자와 정적 팩터리다. public setter를 더하지 않고
+          상태 변경은 의도가 드러나는 도메인 메서드로 한다. BaseEntity 상속을 요구하지 않는다.
+        - DB 기본값으로 관리되는 필드의 insertable=false, updatable=false 계약을 보존한다.
+        - 선택 필드를 원시형 boolean으로 받으면 생략 시 우리 문구가 아니라 스프링 기본 400이 나간다.
+          Boolean으로 받아 null을 접는지 본다. Set.of(...).contains(null)은 NPE로 500이 되므로 null 검사가 먼저다.
+        - 들여쓰기는 탭이고 주석은 한국어 명사형 종결(~함, ~반환, ~임)이다.
+        - ponytail(YAGNI): 추측성 추상화, 구현이 하나뿐인 인터페이스, 불필요한 의존성을 지적한다.
+          의도된 단순화는 // ponytail: 주석으로 표시한다.
+        - 정품 인증과 일련번호 자동 조회를 범위에 되살리는 변경을 지적한다(기각된 결정이다).
+
+    - path: "src/main/java/**/*Controller.java"
+      instructions: |
+        Controller 규칙:
+        - 모든 REST 엔드포인트의 최종 경로는 /api/v1/로 시작한다. 클래스 레벨과 메서드 레벨 매핑 둘 다 허용한다.
+          GiftController는 접두사가 둘(/api/v1/gift와 /api/v1/g/{token})이라 메서드 레벨 절대 경로가 맞다.
+        - /letter-images/** 바이너리 서빙은 의도된 /api/v1 예외다.
+        - WebMvcConfigurer의 addPathPrefix로 접두사를 일괄 주입하는 방식은 기각됐다.
+          소스에서 grep으로 실제 경로가 안 보여 점검이 무력화되기 때문이다.
+        - 응답 본문은 성공과 실패 모두 CustomResponse 봉투를 유지한다. Entity나 Map이나 문자열을
+          봉투 없이 직접 반환하면 지적한다.
+        - ResponseEntity를 전면 금지하지 않는다. Set-Cookie나 상태 코드 제어가 필요하면 쓰되 body는 CustomResponse다.
+        - 회원 식별은 CurrentMember로 하고 회원 ID를 Service에 넘긴다.
+        - Controller에 비즈니스 로직이나 Repository 직접 접근을 넣지 않는다.
+        - 경로와 HTTP 메서드와 오류 코드 계약을 바꾸는 변경은 PR에 근거가 없으면 지적한다.
+
+    - path: "src/main/java/**/*Service.java"
+      instructions: |
+        Service 규칙:
+        - 쓰기는 @Transactional, 읽기는 @Transactional(readOnly = true)인지 본다.
+        - 요청으로 받은 friendId나 recommendationId나 giftId는 현재 회원의 소유 범위로 제한한다.
+          없는 자원과 남의 자원은 같은 오류로 처리해 존재 여부를 노출하지 않는다.
+        - 도메인 실패는 CustomException과 그 도메인의 ErrorCode로 반환한다. 일반 RuntimeException으로 계약을 우회하지 않는다.
+        - Clock 주입은 이 프로젝트 규칙이 아니다. Clock이 없다는 이유만으로 LocalDateTime.now()를 지적하지 않는다.
+        - 추천은 관계 태그와 예산과 취향을 쓰는 규칙 기반이다. 확정 없이 외부 AI 호출을 더하거나
+          결과를 AI 추천이라 단정하는 문구를 지적한다.
+
+    - path: "src/test/java/**/*.java"
+      instructions: |
+        테스트 규칙:
+        - 통합 테스트는 HttpIntegrationSupport나 MySqlContainerSupport를 쓰고 개발자 로컬 MySQL에 의존하지 않는다.
+        - 레포 밖 경로를 참조하지 않는다. MountableFile.forHostPath("../...")는 파일이 없어도 예외 없이
+          빈 컨테이너로 뜨기 때문에 로컬은 통과하고 CI만 실패한다.
+        - 상태 코드만 확인하고 끝내지 않는다. 오류 경로는 CustomResponse 봉투의 도메인 오류 코드까지 본다
+          (요청 파싱 실패 400을 우리 검증 400으로 오인해 통과한 사고가 있다).
+        - 성공 경로는 응답 핵심 필드나 DB 상태나 소유권이나 순위처럼 시나리오가 요구하는 결과를 확인한다.
+        - 없는 자원과 남의 자원이 같은 오류로 처리되는 소유권 회귀 테스트를 지운다면 지적한다.
+
+    - path: "src/test/resources/db/*.sql"
+      instructions: |
+        스키마와 시드 규칙:
+        - 각 파일 첫머리의 SET NAMES utf8mb4를 지우지 않는다. 없으면 한글이 깨져 저장된다.
+        - 이 파일들이 백엔드 정본이고 Testcontainers와 로컬 compose가 함께 쓴다.
+        - 변경 시 중앙 해커톤 작업공간의 prototype/db/init 사본도 같은 회차에 동기화해야 한다.
+          그 사본은 다른 저장소라 여기서 확인할 수 없다. PR 본문이나 동반 커밋에 동기화 언급이 없으면
+          위험으로 지적하되 불일치를 확인했다고 단정하지 않는다.
+        - 스키마를 바꾸면 관련 Entity와 SchemaLoadedTest를, 시드를 바꾸면 고정 ID와 추천 순위에
+          의존하는 통합 테스트를 함께 본다.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        CI와 배포 규칙:
+        - main push 배포는 CI 성공 뒤에만 돈다. deploy와 image 잡의 needs 연결을 끊거나 우회하는 변경을 지적한다.
+        - dev는 CI만 돌고 프로덕션에 배포하지 않는다.
+        - 시크릿 실제 값을 workflow나 명령 인자나 로그에 노출하지 않는다. 표준 입력으로 넘긴다.
+        - ENV는 .env 전체를 담는 단일 시크릿이라 일부 키만 있다고 가정하는 변경을 지적한다.
+
+chat:
+  auto_reply: false

@@ -10,9 +10,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * ADR-009 취향 이원화. 프로토타입은 source가 OWNER_INPUT뿐이고 친구당 1행임(재저장은 덮어쓰기).
+ * ADR-009 취향 이원화. 친구당 1행이고 재저장은 덮어쓰기임.
  *
- * memberId와 friendId 중 정확히 하나만 값이 있어야 함 — 스키마의 CHECK 제약이 최종 방어선임.
+ * source는 OWNER_INPUT(발송자 대리)과 INVITE_ANSWER(수신자 본인) 둘이고 후자는 아직 시드로만 들어옴. memberId와
+ * friendId 중 정확히 하나만 값이 있어야 함 — 스키마의 CHECK 제약이 최종 방어선임.
  */
 @Entity
 @Table(name = "taste_profile")
@@ -58,6 +59,15 @@ public class TasteProfile {
 
 	public String getAnswers() {
 		return this.answers;
+	}
+
+	/**
+	 * 수신자 본인이 답한 취향인지임(ADR-009 결정 2의 INVITE_ANSWER). 발송자 대리 입력이 이것을 덮지 못하게 하는 판정에 씀.
+	 *
+	 * 시드로만 들어오는 값임 — 설문 왕복(Start-01, Start-02)은 아직 범위 밖이라 이 값을 쓰는 API 경로가 없음.
+	 */
+	public boolean isFromInvite() {
+		return "INVITE_ANSWER".equals(this.source);
 	}
 
 }
