@@ -72,11 +72,16 @@ public class FriendController {
 				Map.of("id", updated.getId(), "name", updated.getName(), "phone", updated.getPhone())));
 	}
 
-	/** FR-011 취향 저장 귀속임(ADR-009). 재저장은 덮어쓰기임. */
+	/**
+	 * FR-011 취향 저장 귀속임(ADR-009). 수신자 본인 답변은 덮지 않고 updated를 false로 돌려주므로 화면이 그 값을 보고 안내해야
+	 * 함.
+	 */
 	@PatchMapping
 	public CustomResponse<Map<String, Object>> saveTaste(@RequestBody TasteRequest request) {
-		this.friends.saveTaste(this.currentMember.requireId(), request.id(), request.tasteSummary());
-		return CustomResponse.ok(Map.of("ok", true));
+		boolean updated = this.friends.saveTaste(this.currentMember.requireId(), request.id(), request.tasteSummary());
+
+		return CustomResponse.ok(updated ? Map.of("ok", true, "updated", true)
+				: Map.of("ok", true, "updated", false, "reason", "INVITE_ANSWER_PROTECTED"));
 	}
 
 }

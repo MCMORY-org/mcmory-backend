@@ -106,14 +106,39 @@ class InputGuardIntegrationTest extends HttpIntegrationSupport {
 
 	@Test
 	void 취향을_다시_저장해도_덮어쓰기가_된다() {
-		// taste_profile에 UNIQUE를 걸면서 delete 후 insert의 flush 순서 때문에 깨질 수 있는 지점임
-		long friendId = get("/api/v1/friends").body().get("list").get(0).get("id").asLong();
+		// taste_profile의 UNIQUE와 delete 후 insert의 flush 순서 때문에 깨질 수 있는 지점임.
+		// 시드 친구 101은 INVITE_ANSWER 보유자라 가드에 걸려 아무 것도 안 바뀌는데 200이라
+		// 이 테스트가 이름과 반대로 통과함. 전용 친구를 만들고 값이 바뀌었는지까지 봄
+		long friendId = 검증용_친구_id("01077770009");
 
 		for (String summary : new String[] { "첫 저장", "두 번째", "세 번째" }) {
 			Response response = patch("/api/v1/friends",
 					"{\"id\":" + friendId + ",\"tasteSummary\":\"" + summary + "\"}");
 			assertThat(response.status()).as(summary).isEqualTo(200);
+			assertThat(response.body().get("updated").asBoolean()).as(summary).isTrue();
+			assertThat(취향_요약(friendId)).as(summary).isEqualTo(summary);
 		}
+	}
+
+	/**
+	 * 수신자가 직접 답한 취향은 발송자가 못 덮음(ADR-009 결정 2). 200을 주되 `updated`가 false라 화면이 오인하지 않음.
+	 */
+	@Test
+	void 수신자_본인_답변은_발송자가_덮지_못한다() {
+		Response response = patch("/api/v1/friends", "{\"id\":101,\"tasteSummary\":\"발송자가 적은 요약\"}");
+
+		assertThat(response.status()).as(response.text()).isEqualTo(200);
+		assertThat(response.body().get("updated").asBoolean()).isFalse();
+		assertThat(response.body().get("reason").asString()).isEqualTo("INVITE_ANSWER_PROTECTED");
+	}
+
+	private String 취향_요약(long friendId) {
+		for (var friend : get("/api/v1/friends").body().get("list")) {
+			if (friend.get("id").asLong() == friendId) {
+				return friend.get("tasteSummary").isNull() ? null : friend.get("tasteSummary").asString();
+			}
+		}
+		throw new AssertionError("친구를 찾지 못함: " + friendId);
 	}
 
 	@Test

@@ -14,6 +14,12 @@ INSERT INTO member (id, name, phone, password_hash, birth_date, gender, sms_opt_
 INSERT INTO friend (id, owner_member_id, name, phone) VALUES
   (101, 1, '친구 2', '01099998888');
 
+-- 수신자가 직접 답한 취향(FIX-W002). source가 INVITE_ANSWER인 유일한 행이다.
+-- 설문 왕복(Start-01, Start-02)은 범위 밖이라 답변이 이미 도착한 상태를 시드로 만든다.
+-- 읽는 키는 color와 style 둘뿐이다. 기대 순위는 RecommendTasteIntegrationTest가 고정한다.
+INSERT INTO taste_profile (friend_id, source, answers) VALUES
+  (101, 'INVITE_ANSWER', JSON_OBJECT('color', '블랙', 'style', '미니멀'));
+
 -- demo_serial은 FR-028 시연 매칭 키다. 실서비스 의미 없음.
 --
 -- style_tags는 v1.1 실측 옷 스타일 6종(캐주얼, 미니멀, 스트릿, 클래식, 러블리, 포멀)만 쓴다.

@@ -3,6 +3,7 @@ package com.mcmory.backend.recommend;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -12,6 +13,7 @@ import com.mcmory.backend.global.apiPayload.exception.CustomException;
 import com.mcmory.backend.friend.FriendRepository;
 import com.mcmory.backend.product.Product;
 import com.mcmory.backend.product.ProductRepository;
+import com.mcmory.backend.taste.TasteProfileRepository;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -42,15 +44,30 @@ public class RecommendService {
 
 	private final FriendRepository friends;
 
+	private final TasteProfileRepository tasteProfiles;
+
 	private final ObjectMapper objectMapper;
 
 	public RecommendService(ProductRepository products, RecommendationRepository recommendations,
-			RecommendationResultRepository recommendationResults, FriendRepository friends, ObjectMapper objectMapper) {
+			RecommendationResultRepository recommendationResults, FriendRepository friends,
+			TasteProfileRepository tasteProfiles, ObjectMapper objectMapper) {
 		this.products = products;
 		this.recommendations = recommendations;
 		this.recommendationResults = recommendationResults;
 		this.friends = friends;
+		this.tasteProfiles = tasteProfiles;
 		this.objectMapper = objectMapper;
+	}
+
+	/**
+	 * 추천 점수에 쓰는 취향임. 정식 문항 집합은 기능명세서 4.5의 미결이라 색상과 스타일 둘만 읽음.
+	 *
+	 * 발송자 대리 입력(OWNER_INPUT)은 summary만 써서 점수에 영향이 없음 — 지금 두 키를 채우는 것은 시드뿐임.
+	 */
+	private record TasteAnswers(String color, String style) {
+
+		static final TasteAnswers NONE = new TasteAnswers(null, null);
+
 	}
 
 	public record ProductView(Long id, String name, String emoji, int price, String color) {
@@ -75,11 +92,13 @@ public class RecommendService {
 	 * 요구하므로 저장을 귀속 시점으로 미룰 수 없음.
 	 */
 	@Transactional
-	public Created recommend(Long memberId, String relation, int minBudgetInTenThousand, int maxBudgetInTenThousand) {
-		List<Result> results = calculate(relation, minBudgetInTenThousand, maxBudgetInTenThousand);
+	public Created recommend(Long memberId, String relation, int minBudgetInTenThousand, int maxBudgetInTenThousand,
+			Long friendId) {
+		TasteAnswers taste = tasteOf(memberId, friendId);
+		List<Result> results = calculate(relation, minBudgetInTenThousand, maxBudgetInTenThousand, taste);
 
-		Recommendation saved = this.recommendations.saveAndFlush(
-				new Recommendation(memberId, toContextJson(relation, minBudgetInTenThousand, maxBudgetInTenThousand)));
+		Recommendation saved = this.recommendations.saveAndFlush(new Recommendation(memberId,
+				toContextJson(relation, minBudgetInTenThousand, maxBudgetInTenThousand, friendId)));
 
 		for (int index = 0; index < results.size(); index++) {
 			Result result = results.get(index);
@@ -133,8 +152,74 @@ public class RecommendService {
 			.orElseThrow(() -> new CustomException(RecommendErrorCode.INVALID_REFERENCE));
 	}
 
+	/**
+	 * FR-009 취향 반영임. friendId가 없으면 NONE을 돌려주므로 이 경로가 없던 때와 결과가 완전히 같음.
+	 *
+	 * 남의 친구와 삭제된 친구는 취향을 조용히 비우지 않고 404로 막음 — 순번을 훑어 남의 친구 존재 여부를 알아내는 것을 막기 위함임.
+	 */
+	private TasteAnswers tasteOf(Long memberId, Long friendId) {
+		if (friendId == null) {
+			return TasteAnswers.NONE;
+		}
+		this.friends.findByIdAndOwnerMemberIdAndDeletedAtIsNull(friendId, memberId)
+			.orElseThrow(() -> new CustomException(FriendErrorCode.NOT_FOUND));
+
+		return this.tasteProfiles.findByFriendId(friendId)
+			.map((profile) -> readAnswers(profile.getAnswers()))
+			.orElse(TasteAnswers.NONE);
+	}
+
+	/** 없는 키와 깨진 JSON은 전부 NONE으로 흡수함 — 취향이 없다고 추천이 실패하면 안 됨. */
+	private TasteAnswers readAnswers(String answersJson) {
+		if (answersJson == null) {
+			return TasteAnswers.NONE;
+		}
+		try {
+			JsonNode node = this.objectMapper.readTree(answersJson);
+			return new TasteAnswers(textOrNull(node, "color"), textOrNull(node, "style"));
+		}
+		catch (Exception ex) {
+			return TasteAnswers.NONE;
+		}
+	}
+
+	private String textOrNull(JsonNode node, String key) {
+		JsonNode value = node.get(key);
+		if (value == null || value.isNull()) {
+			return null;
+		}
+		String text = value.asString();
+		return text.isBlank() ? null : text;
+	}
+
+	/**
+	 * 취향 일치 가산임. 색상과 스타일 각각 2점으로 관계 태그와 같은 무게를 줌 — 기획 주제가 취향 미스매칭 보완이라 취향이 관계에 밀리면 안 됨.
+	 */
+	private int tasteScore(Product product, List<String> tags, TasteAnswers taste) {
+		int score = 0;
+		if (taste.color() != null && taste.color().equals(product.getColor())) {
+			score += 2;
+		}
+		if (taste.style() != null && tags.contains(taste.style())) {
+			score += 2;
+		}
+		return score;
+	}
+
+	/** 근거 문구에 쓸 취향임. 색과 스타일이 둘 다 맞아도 문구에는 하나만 싣고 색을 먼저 씀. 일치가 없으면 null이라 관계 근거로 떨어짐. */
+	private String tasteHitOf(Product product, List<String> tags, TasteAnswers taste) {
+		if (taste.color() != null && taste.color().equals(product.getColor())) {
+			return taste.color() + " 계열";
+		}
+		if (taste.style() != null && tags.contains(taste.style())) {
+			return taste.style() + " 스타일";
+		}
+		return null;
+	}
+
 	/** 입력 예산 단위는 만원임(화면 표기 그대로). 원 단위 환산은 컨트롤러가 아니라 여기서 함. */
-	private List<Result> calculate(String relation, int minBudgetInTenThousand, int maxBudgetInTenThousand) {
+	private List<Result> calculate(String relation, int minBudgetInTenThousand, int maxBudgetInTenThousand,
+			TasteAnswers taste) {
 		// 모르는 관계는 선호 태그가 없어 조용히 일반 추천이 나감 — 화면이 보내는 4종만 받음
 		if (!RELATION_TAG.containsKey(relation)) {
 			throw new CustomException(RecommendErrorCode.INVALID_CONDITION);
@@ -161,7 +246,8 @@ public class RecommendService {
 		List<Scored> scored = new ArrayList<>(pool.stream().map((product) -> {
 			List<String> tags = readTags(product.getStyleTags());
 			int score = tags.contains(preferredTag) ? 2 : (tags.contains("미니멀") ? 1 : 0);
-			return new Scored(product, tags, score);
+			return new Scored(product, tags, score + tasteScore(product, tags, taste),
+					tasteHitOf(product, tags, taste));
 		}).toList());
 
 		// 안정 정렬이라 점수가 같으면 id 순서가 유지됨(스모크가 첫 항목의 근거 유형을 봄)
@@ -177,7 +263,7 @@ public class RecommendService {
 							(item.product().getPrice() == null) ? 0 : item.product().getPrice(),
 							item.product().getColor()),
 					personal ? "PERSONAL" : "GENERAL",
-					personal ? relation + "에게 어울리는 " + matchedTag(item, preferredTag) + " 라인이에요" : "모델이 함께 매치한 제품이에요"));
+					personal ? personalReason(item, relation, preferredTag) : "모델이 함께 매치한 제품이에요"));
 		}
 		return results;
 	}
@@ -190,7 +276,18 @@ public class RecommendService {
 		return item.tags().contains(preferredTag) ? preferredTag : "미니멀";
 	}
 
-	private record Scored(Product product, List<String> tags, int score) {
+	/**
+	 * 취향이 맞았으면 그것을 근거로 씀 — 기획 주제가 취향 미스매칭 보완이라 화면에 "왜 이걸 골랐는지"가 취향으로 읽혀야 함. 취향이 없거나 안
+	 * 맞았으면 기존 관계 근거로 떨어짐.
+	 */
+	private String personalReason(Scored item, String relation, String preferredTag) {
+		if (item.tasteHit() != null) {
+			return item.tasteHit() + "을 좋아하신다고 하셔서 골랐어요";
+		}
+		return relation + "에게 어울리는 " + matchedTag(item, preferredTag) + " 라인이에요";
+	}
+
+	private record Scored(Product product, List<String> tags, int score, String tasteHit) {
 	}
 
 	private ProductView productViewOf(Long productId) {
@@ -202,11 +299,18 @@ public class RecommendService {
 			.orElseGet(() -> new ProductView(productId, "삭제된 상품", "🎁", 0, null));
 	}
 
-	private String toContextJson(String relation, int minBudget, int maxBudget) {
+	private String toContextJson(String relation, int minBudget, int maxBudget, Long friendId) {
 		try {
 			// 단위는 만원(요청 그대로). 목적과 상황은 현재 요청에 없어 지어내지 않음 — 요청이 늘면 키만 더함
-			return this.objectMapper
-				.writeValueAsString(Map.of("relation", relation, "minBudget", minBudget, "maxBudget", maxBudget));
+			Map<String, Object> context = new LinkedHashMap<>();
+			context.put("relation", relation);
+			context.put("minBudget", minBudget);
+			context.put("maxBudget", maxBudget);
+			// 스냅샷 재조회가 근거를 재현하려면 어느 친구의 취향으로 뽑았는지가 남아야 함
+			if (friendId != null) {
+				context.put("friendId", friendId);
+			}
+			return this.objectMapper.writeValueAsString(context);
 		}
 		catch (Exception ex) {
 			throw new IllegalStateException("추천 맥락 직렬화 실패", ex);
