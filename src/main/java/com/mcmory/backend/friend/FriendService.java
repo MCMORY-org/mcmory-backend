@@ -82,16 +82,28 @@ public class FriendService {
 		this.tasteProfiles.deleteByFriendId(friend.getId());
 	}
 
+	/**
+	 * 저장했는지를 돌려줌. **200에 false가 실릴 수 있음** — 덮지 않은 것을 성공으로만 알리면 화면이 저장됐다고 오인함.
+	 *
+	 * 409로 하지 않은 이유: 같은 값을 다시 보내도 안전해야 하고(멱등), 실패가 아니라 "이미 더 신뢰할 값이 있음"이기 때문임.
+	 */
 	@Transactional
-	public void saveTaste(Long memberId, Long friendId, String summary) {
+	public boolean saveTaste(Long memberId, Long friendId, String summary) {
 		Friend friend = this.friends.findByIdAndOwnerMemberIdAndDeletedAtIsNull(friendId, memberId)
 			.orElseThrow(() -> new CustomException(FriendErrorCode.NOT_FOUND));
 
-		// ADR-009 결정 9: 재저장은 덮어쓰기임. 친구당 1행을 유지함.
+		// ADR-009 결정 2: 본인 입력이 대리 입력을 이김. 수신자가 직접 답한 취향은 발송자의 수정으로 덮지 않음 —
+		// 덮으면 추천의 근거였던 답변이 조용히 사라지고 다음 추천이 관계와 예산만 보는 상태로 돌아감(FIX-W002 T1).
+		if (this.tasteProfiles.findByFriendId(friend.getId()).map(TasteProfile::isFromInvite).orElse(false)) {
+			return false;
+		}
+
+		// ADR-009 결정 1: 사람 취향은 갱신형이라 친구당 1행을 유지함.
 		// flush를 끼우지 않으면 Hibernate가 INSERT를 DELETE보다 먼저 내보내 uq_taste_friend를 위반함
 		this.tasteProfiles.deleteByFriendId(friend.getId());
 		this.tasteProfiles.flush();
 		this.tasteProfiles.save(TasteProfile.forFriend(friend.getId(), toAnswersJson(summary)));
+		return true;
 	}
 
 	/**

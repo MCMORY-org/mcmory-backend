@@ -25,8 +25,12 @@ public class RecommendController {
 		this.currentMember = currentMember;
 	}
 
-	/** 예산 단위는 만원임. relation이 비면 친구로 둠 — 화면 기본 선택값과 같음. */
-	public record RecommendRequest(String relation, Integer minBudget, Integer maxBudget) {
+	/**
+	 * 예산 단위는 만원임. relation이 비면 친구로 둠 — 화면 기본 선택값과 같음.
+	 *
+	 * friendId는 선택임. 오면 그 친구의 취향을 점수에 반영하고, 없으면 이 필드가 생기기 전과 결과가 같음.
+	 */
+	public record RecommendRequest(String relation, Integer minBudget, Integer maxBudget, Long friendId) {
 	}
 
 	public record SaveRequest(Long friendId) {
@@ -38,7 +42,7 @@ public class RecommendController {
 		RecommendService.Created created = this.recommendService.recommend(this.currentMember.requireId(),
 				(request.relation() == null) ? "친구" : request.relation(),
 				(request.minBudget() == null) ? 0 : request.minBudget(),
-				(request.maxBudget() == null) ? 0 : request.maxBudget());
+				(request.maxBudget() == null) ? 0 : request.maxBudget(), request.friendId());
 
 		return CustomResponse.ok(Map.of("recommendationId", created.recommendationId(), "results", created.results()));
 	}

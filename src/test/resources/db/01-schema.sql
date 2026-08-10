@@ -71,7 +71,7 @@ CREATE TABLE taste_profile (
   id        BIGINT AUTO_INCREMENT PRIMARY KEY,
   member_id BIGINT      NULL,
   friend_id BIGINT      NULL,
-  source    VARCHAR(20) NOT NULL DEFAULT 'OWNER_INPUT', -- 프로토타입은 OWNER_INPUT만
+  source    VARCHAR(20) NOT NULL DEFAULT 'OWNER_INPUT', -- OWNER_INPUT(대리) 또는 INVITE_ANSWER(본인)
   answers   JSON        NOT NULL,
   updated_at DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT ck_taste_owner CHECK ((member_id IS NULL) <> (friend_id IS NULL)),
