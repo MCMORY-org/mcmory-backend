@@ -1,7 +1,5 @@
-# 로컬 기본값은 프로토타입 DB(prototype/compose.yml)의 컨테이너를 보되 데이터베이스는 mcmory_java로 가른다.
-# 포트 3307은 다른 MySQL과 겹치지 않게 고른 값이다.
-# 여기 기본값은 전부 로컬 편의값이고 배포에서는 환경변수로 덮는다. 배포 compose가 읽는
-# DB_ROOT_PASSWORD만 기본값이 없어 주입하지 않으면 아예 뜨지 않는다.
+# 기본값은 전부 로컬 편의값이고 배포에서는 환경변수로 덮는다. 포트 3307은 다른 MySQL과 겹치지 않게 고른 값이라,
+# 여기를 바꾸면 compose.yml도 함께 바꿔야 팀원이 env 없이 뜬다.
 spring:
   application:
     name: mcmory-backend
@@ -17,15 +15,15 @@ spring:
       max-request-size: 52MB
   jpa:
     hibernate:
-      # 스키마 정본은 db/init/01-schema.sql이다. 애플리케이션이 덮어쓰지 않게 validate로 둔다
+      # 스키마 정본은 src/test/resources/db/01-schema.sql이다. 애플리케이션이 덮어쓰지 않게 validate로 둔다
       ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
 
-# ADR-013 인증 설정. 유예창 기본값 30초 — 이 값이 ADR-013 결정 9의 1항 표기와 어긋나면
-# 프론트가 재시도 타이밍을 오해한다. 고칠 때 문서도 함께 고칠 것.
+# ADR-013 인증 설정. 유예창 기본값 30초 — 이 값과 문서 표기가 어긋나면
+# 프론트가 재시도 타이밍을 오해한다(campus가 5초로 잘못 적었다 정정한 이력). 문서 표기는 ADR-013 결정 9의 1항이다.
 app:
   auth:
     # **이 기본값은 public 레포에 공개돼 있다.** 배포에서 JWT_SECRET을 주입하지 않으면
@@ -43,7 +41,8 @@ app:
     # ADR-013 결정 7의 Origin 검사에서 추가로 허용할 출처. 같은 호스트는 값 없이도 통과한다
     allowed-origins: ${ALLOWED_ORIGINS:}
   letter-images:
-    # FR-012 편지 사진 저장 위치다. 로컬 디스크라 재배포하면 사라진다 — 배포 compose에서 볼륨을 붙인다(OPS-W001 T4)
+    # FR-012 편지 사진 저장 위치다. 로컬 디스크라 배포에서는 deploy/compose.yml의 named volume이
+    # 이 경로를 받아야 재배포에도 살아남는다. 파일이 더 오래 살아야 하면 오브젝트 스토리지로 옮긴다
     dir: ${LETTER_IMAGES_DIR:./var/letter-images}
 
 management:

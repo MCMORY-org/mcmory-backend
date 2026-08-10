@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 /**
  * MCMORY 백엔드 진입점.
  *
- * 현재 이 저장소는 CI 골격만 있는 스캐폴드임. 도메인 코드는 `mcmory-proto-backend`에서 이슈 단위로 이식함(PROTO-W001 4단계).
+ * 모든 응답은 CustomResponse 봉투로 나가고 계약 정본은 API명세서임. 실패는 문구가 아니라 code로 분기할 것.
  */
 @SpringBootApplication
 @ConfigurationPropertiesScan
