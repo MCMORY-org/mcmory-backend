@@ -1,0 +1,115 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.0.3'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'checkstyle'
+	id 'com.github.spotbugs' version '6.5.8'
+	id 'io.spring.javaformat' version '0.0.47'
+	id 'jacoco'
+}
+
+group = 'com.mcmory'
+version = '0.0.1-SNAPSHOT'
+description = 'mcmory-backend'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+// 이 머신의 JVM 플랫폼 기본 인코딩이 MS949(한국어 코드페이지)라 인코딩을 명시하지 않으면
+// javac이 UTF-8 소스의 한글 문자열 리터럴을 깨뜨리고, spring-javaformat이 한글 주석 줄 너비를
+// 오계산해 format과 checkFormat이 엇갈림. 컴파일과 포맷 검사 둘 다 UTF-8로 고정함(campus 승계).
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+}
+
+tasks.withType(io.spring.javaformat.gradle.tasks.FormatterTask).configureEach {
+	encoding = 'UTF-8'
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// Swagger — 프론트와의 계약 정본 보조(교내톤에서 API 명세서와 함께 실제로 쓰임)
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
+
+	// JWT — ADR-013 인증. campus CookieUtils와 JwtAuthenticationFilter 재사용 전제
+	implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
+
+	annotationProcessor 'org.projectlombok:lombok'
+	compileOnly 'org.projectlombok:lombok'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// Testcontainers — TEST-W001의 통합 4클래스. 회전 경쟁과 슬롯 선점은
+	// 인메모리로 재현되지 않아 실제 MySQL이 필수임
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:testcontainers'
+	testImplementation 'org.testcontainers:testcontainers-mysql:2.0.3'
+}
+
+checkstyle {
+	toolVersion = '10.17.0'
+	configFile = file('checkstyle/checkstyle.xml')
+	// checkstyle.xml의 ${config_loc}가 ./checkstyle/로 풀리게 하는 설정 — 없으면 suppressions.xml 로드 실패
+	configDirectory = file('checkstyle')
+	ignoreFailures = false
+}
+
+spotbugs {
+	excludeFilter = file('spotbugs/spotbugs-exclude.xml')
+	ignoreFailures = false
+	toolVersion = '4.10.2'
+}
+
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
+	reports.create('html') { required = true }
+	reports.create('xml') { required = false }
+}
+
+jacoco {
+	toolVersion = '0.8.14'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+	finalizedBy tasks.jacocoTestReport
+}
+
+tasks.jacocoTestReport {
+	dependsOn tasks.test
+	reports {
+		xml.required = true
+		html.required = true
+	}
+}
+
+// TEST-W001 결정: 커버리지 수치 게이트를 승계하지 않는다.
+// campus는 70퍼센트 게이트를 썼으나 4일 일정에서는 숫자를 채우려고 의미 없는 테스트를 쓰게 된다.
+// 게이트는 "필수 검증 항목 전부 녹색"이고 JaCoCo는 리포트 생성만 유지한다.
+// 되살릴 때는 jacocoTestCoverageVerification 블록과 tasks.check 의존을 함께 넣을 것.
+
+// boot jar만 생성 (plain jar 비활성)
+jar {
+	enabled = false
+}

@@ -1,0 +1,243 @@
+package com.mcmory.backend.recommend;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+
+import com.mcmory.backend.global.apiPayload.code.FriendErrorCode;
+import com.mcmory.backend.global.apiPayload.code.RecommendErrorCode;
+import com.mcmory.backend.global.apiPayload.exception.CustomException;
+import com.mcmory.backend.friend.FriendRepository;
+import com.mcmory.backend.product.Product;
+import com.mcmory.backend.product.ProductRepository;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * FR-009 추천. 시드 카탈로그 규칙 기반이고 LLM이 없음 — 프로토타입은 규칙으로 먼저 성립을 봄.
+ *
+ * ADR-009: 근거는 PERSONAL과 GENERAL로 이원화하고 **첫 항목만** 개인화 근거를 붙임(디자인 19 실측 반영).
+ */
+@Service
+public class RecommendService {
+
+	/**
+	 * 관계별 선호 태그. 예산 필터를 통과한 것 중 이 태그를 가진 상품에 가중치를 줌. 관계를 옷 스타일 태그로 번역해 매칭함. 값은 v1.1 실측
+	 * 스타일 6종 안에서만 고름 — 2026-08-10 이전에는 데일리와 실용과 합리적을 썼는데 그건 스타일이 아니라 이 표만을 위해 시드
+	 * style_tags에 심어둔 값이라 두 축이 한 컬럼에서 뒤엉켰음(FIX-W001 T2).
+	 */
+	private static final Map<String, String> RELATION_TAG = Map.of("연인", "러블리", "친구", "캐주얼", "부모님", "클래식", "스승/제자",
+			"포멀");
+
+	private final ProductRepository products;
+
+	private final RecommendationRepository recommendations;
+
+	private final RecommendationResultRepository recommendationResults;
+
+	private final FriendRepository friends;
+
+	private final ObjectMapper objectMapper;
+
+	public RecommendService(ProductRepository products, RecommendationRepository recommendations,
+			RecommendationResultRepository recommendationResults, FriendRepository friends, ObjectMapper objectMapper) {
+		this.products = products;
+		this.recommendations = recommendations;
+		this.recommendationResults = recommendationResults;
+		this.friends = friends;
+		this.objectMapper = objectMapper;
+	}
+
+	public record ProductView(Long id, String name, String emoji, int price, String color) {
+	}
+
+	public record Result(ProductView product, String reasonType, String reason) {
+	}
+
+	/** 저장된 결과를 읽을 때는 순위를 함께 돌려줌 — 재조회의 요점이 순위 동결이기 때문임. */
+	public record StoredResult(ProductView product, String reasonType, String reason, int rankNo) {
+	}
+
+	public record Snapshot(Long recommendationId, JsonNode context, Long savedFriendId, LocalDateTime createdAt,
+			List<StoredResult> results) {
+	}
+
+	public record Created(Long recommendationId, List<Result> results) {
+	}
+
+	/**
+	 * FR-009 추천 생성임. 호출마다 recommendation 1행과 결과 행을 남김 — 재조회(TC-009)와 gift 연결이 생성 직후의 ID를
+	 * 요구하므로 저장을 귀속 시점으로 미룰 수 없음.
+	 */
+	@Transactional
+	public Created recommend(Long memberId, String relation, int minBudgetInTenThousand, int maxBudgetInTenThousand) {
+		List<Result> results = calculate(relation, minBudgetInTenThousand, maxBudgetInTenThousand);
+
+		Recommendation saved = this.recommendations.saveAndFlush(
+				new Recommendation(memberId, toContextJson(relation, minBudgetInTenThousand, maxBudgetInTenThousand)));
+
+		for (int index = 0; index < results.size(); index++) {
+			Result result = results.get(index);
+			this.recommendationResults.save(new RecommendationResult(saved.getId(), result.product().id(), index + 1,
+					result.reasonType(), result.reason()));
+		}
+
+		return new Created(saved.getId(), results);
+	}
+
+	/**
+	 * TC-009 스냅샷 재조회임. 저장 행을 그대로 돌려주고 재계산하지 않음.
+	 *
+	 * 남의 추천과 없는 추천을 같은 404로 다룸 — 존재 여부를 알려주면 남의 추천 ID를 탐색할 수 있음.
+	 */
+	@Transactional(readOnly = true)
+	public Snapshot snapshot(Long memberId, Long recommendationId) {
+		Recommendation recommendation = this.recommendations.findById(recommendationId)
+			.filter((found) -> found.isOwnedBy(memberId))
+			.orElseThrow(() -> new CustomException(RecommendErrorCode.NOT_FOUND));
+
+		List<StoredResult> results = this.recommendationResults
+			.findByRecommendationIdOrderByRankNo(recommendation.getId())
+			.stream()
+			.map((row) -> new StoredResult(productViewOf(row.getProductId()), row.getReasonType(), row.getReason(),
+					row.getRankNo()))
+			.toList();
+
+		return new Snapshot(recommendation.getId(), readTree(recommendation.getContext()), recommendation.getFriendId(),
+				recommendation.getCreatedAt(), results);
+	}
+
+	/** FR-011 취향 저장 귀속임. UPDATE 한 문장이라 재호출로 행이 늘지 않음(TC-011). */
+	@Transactional
+	public void attachToFriend(Long memberId, Long recommendationId, Long friendId) {
+		Recommendation recommendation = this.recommendations.findById(recommendationId)
+			.filter((found) -> found.isOwnedBy(memberId))
+			.orElseThrow(() -> new CustomException(RecommendErrorCode.NOT_FOUND));
+
+		this.friends.findByIdAndOwnerMemberIdAndDeletedAtIsNull(friendId, memberId)
+			.orElseThrow(() -> new CustomException(FriendErrorCode.NOT_FOUND));
+
+		recommendation.attachTo(friendId);
+	}
+
+	/** 소유 검증임. 선물에 추천을 매달 때 남의 추천 ID를 실어 보내는 것을 막음. */
+	@Transactional(readOnly = true)
+	public void requireOwned(Long memberId, Long recommendationId) {
+		this.recommendations.findById(recommendationId)
+			.filter((found) -> found.isOwnedBy(memberId))
+			.orElseThrow(() -> new CustomException(RecommendErrorCode.INVALID_REFERENCE));
+	}
+
+	/** 입력 예산 단위는 만원임(화면 표기 그대로). 원 단위 환산은 컨트롤러가 아니라 여기서 함. */
+	private List<Result> calculate(String relation, int minBudgetInTenThousand, int maxBudgetInTenThousand) {
+		// 모르는 관계는 선호 태그가 없어 조용히 일반 추천이 나감 — 화면이 보내는 4종만 받음
+		if (!RELATION_TAG.containsKey(relation)) {
+			throw new CustomException(RecommendErrorCode.INVALID_CONDITION);
+		}
+		// ADR-008: 예산은 0 이상. 음수는 예산에 맞는 상품이 0건이 되어 전체 카탈로그 폴백으로 흡수되므로 여기서 막아야 함
+		if (minBudgetInTenThousand < 0 || maxBudgetInTenThousand < 0) {
+			throw new CustomException(RecommendErrorCode.INVALID_CONDITION);
+		}
+
+		int minBudget = minBudgetInTenThousand * 10000;
+		int maxBudget = maxBudgetInTenThousand * 10000;
+
+		// ADR-008: 최소가 최대를 넘을 수 없음
+		if (minBudget > maxBudget) {
+			throw new CustomException(RecommendErrorCode.BUDGET_INVERTED);
+		}
+
+		List<Product> inBudget = this.products.findByPriceBetweenOrderById(minBudget, maxBudget);
+		// 예산에 맞는 것이 없으면 빈 화면을 주지 않고 전체에서 고름 — 시연 중 결과 0건을 피함
+		List<Product> pool = inBudget.isEmpty() ? this.products.findAllByOrderById() : inBudget;
+
+		String preferredTag = RELATION_TAG.get(relation);
+
+		List<Scored> scored = new ArrayList<>(pool.stream().map((product) -> {
+			List<String> tags = readTags(product.getStyleTags());
+			int score = tags.contains(preferredTag) ? 2 : (tags.contains("미니멀") ? 1 : 0);
+			return new Scored(product, tags, score);
+		}).toList());
+
+		// 안정 정렬이라 점수가 같으면 id 순서가 유지됨(스모크가 첫 항목의 근거 유형을 봄)
+		scored.sort(Comparator.comparingInt(Scored::score).reversed());
+
+		List<Result> results = new ArrayList<>();
+		for (int rank = 0; rank < Math.min(3, scored.size()); rank++) {
+			Scored item = scored.get(rank);
+			boolean personal = (rank == 0) && item.score() > 0;
+
+			results.add(new Result(
+					new ProductView(item.product().getId(), item.product().getName(), item.product().emoji(),
+							(item.product().getPrice() == null) ? 0 : item.product().getPrice(),
+							item.product().getColor()),
+					personal ? "PERSONAL" : "GENERAL",
+					personal ? relation + "에게 어울리는 " + matchedTag(item, preferredTag) + " 라인이에요" : "모델이 함께 매치한 제품이에요"));
+		}
+		return results;
+	}
+
+	/**
+	 * 근거 문구에 쓸 태그임. **실제로 점수를 준 태그**를 돌려줘야 함 — 예전에는 상품의 첫 태그를 그대로 썼는데, 그러면 시드 태그 순서가 바뀔 때
+	 * "연인에게 어울리는 캐주얼 라인이에요"처럼 관계와 무관한 문구가 나감. PERSONAL은 점수가 0보다 클 때만 붙으므로 둘 중 하나는 반드시 있음.
+	 */
+	private String matchedTag(Scored item, String preferredTag) {
+		return item.tags().contains(preferredTag) ? preferredTag : "미니멀";
+	}
+
+	private record Scored(Product product, List<String> tags, int score) {
+	}
+
+	private ProductView productViewOf(Long productId) {
+		// FK가 RESTRICT라 상품이 사라질 수 없음. 그래도 조회 실패를 예외로 올리지 않고 표시용 기본값을 주는 이유는
+		// 재조회가 과거 기록 열람이고 여기서 500을 내면 편지함 화면 전체가 죽기 때문임
+		return this.products.findById(productId)
+			.map((product) -> new ProductView(product.getId(), product.getName(), product.emoji(),
+					(product.getPrice() == null) ? 0 : product.getPrice(), product.getColor()))
+			.orElseGet(() -> new ProductView(productId, "삭제된 상품", "🎁", 0, null));
+	}
+
+	private String toContextJson(String relation, int minBudget, int maxBudget) {
+		try {
+			// 단위는 만원(요청 그대로). 목적과 상황은 현재 요청에 없어 지어내지 않음 — 요청이 늘면 키만 더함
+			return this.objectMapper
+				.writeValueAsString(Map.of("relation", relation, "minBudget", minBudget, "maxBudget", maxBudget));
+		}
+		catch (Exception ex) {
+			throw new IllegalStateException("추천 맥락 직렬화 실패", ex);
+		}
+	}
+
+	private JsonNode readTree(String json) {
+		try {
+			return this.objectMapper.readTree(json);
+		}
+		catch (Exception ex) {
+			return this.objectMapper.createObjectNode();
+		}
+	}
+
+	private List<String> readTags(String styleTagsJson) {
+		if (styleTagsJson == null) {
+			return List.of();
+		}
+		try {
+			JsonNode node = this.objectMapper.readTree(styleTagsJson);
+			if (!node.isArray()) {
+				return List.of();
+			}
+			List<String> tags = new ArrayList<>();
+			node.forEach((element) -> tags.add(element.asString()));
+			return tags;
+		}
+		catch (Exception ex) {
+			return List.of();
+		}
+	}
+
+}

@@ -1,0 +1,94 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+  "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+  "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+  Google Java Style  - adapted for Spring Boot projects.
+  ImportOrder and trailing-whitespace rules are suppressed here
+  because spring-java-format owns those concerns.
+  See suppressions.xml for the full suppression list.
+-->
+<module name="Checker">
+
+    <property name="severity" value="error"/>
+    <property name="charset" value="UTF-8"/>
+    <property name="fileExtensions" value="java"/>
+
+    <!-- 들여쓰기가 탭인데 Checkstyle LineLength는 기본 tabWidth=8로 탭을 8칸으로 세, 탭을 문자
+         길이로 세는 spring-javaformat과 어긋나 형식은 맞는데 LineLength만 실패함. tabWidth=1로
+         맞춰 LineLength를 spring-javaformat 측정과 정렬함. -->
+    <property name="tabWidth" value="1"/>
+
+    <!-- Suppress rules that conflict with spring-java-format -->
+    <module name="SuppressionFilter">
+        <property name="file" value="${config_loc}/suppressions.xml"/>
+        <property name="optional" value="false"/>
+    </module>
+
+    <!-- File-level checks -->
+    <module name="FileTabCharacter">
+        <property name="eachLine" value="true"/>
+    </module>
+
+    <module name="LineLength">
+        <property name="fileExtensions" value="java"/>
+        <property name="max" value="120"/>
+        <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
+    </module>
+
+    <module name="TreeWalker">
+
+        <!-- Braces -->
+        <module name="NeedBraces"/>
+        <module name="LeftCurly"/>
+        <module name="RightCurly"/>
+
+        <!-- Literals -->
+        <module name="UpperEll"/>
+
+        <!-- Modifier order: public protected private abstract default static ... -->
+        <module name="ModifierOrder"/>
+
+        <!-- Whitespace -->
+        <module name="WhitespaceAround">
+            <!-- Suppressed in suppressions.xml for some Spring patterns -->
+            <property name="allowEmptyConstructors" value="true"/>
+            <property name="allowEmptyMethods" value="true"/>
+            <property name="allowEmptyTypes" value="true"/>
+            <property name="allowEmptyLoops" value="true"/>
+        </module>
+
+        <!-- Empty lines between class members -->
+        <module name="EmptyLineSeparator">
+            <property name="allowNoEmptyLineBetweenFields" value="true"/>
+        </module>
+
+        <!-- Import order  - spring-java-format owns this, suppressed below -->
+        <module name="ImportOrder">
+            <property name="option" value="top"/>
+            <property name="groups" value="java,javax,jakarta,org,com"/>
+            <property name="separated" value="true"/>
+            <property name="sortStaticImportsAlphabetically" value="true"/>
+        </module>
+
+        <!-- No wildcard imports -->
+        <module name="AvoidStarImport"/>
+
+        <!-- Misc -->
+        <module name="PackageDeclaration"/>
+        <module name="OneTopLevelClass"/>
+
+        <!-- Naming conventions (Checkstyle 기본 정규식).
+             ConstantName은 제외 - 팀의 `static final ObjectMapper objectMapper`
+             같은 정적 헬퍼 객체를 오탐하며, google_checks.xml도 같은 이유로 미포함.
+             MethodName은 한글·언더스코어 테스트명 때문에 test 소스에서 suppress(suppressions.xml). -->
+        <module name="TypeName"/>
+        <module name="MethodName"/>
+        <module name="MemberName"/>
+        <module name="ParameterName"/>
+        <module name="LocalVariableName"/>
+
+    </module>
+
+</module>

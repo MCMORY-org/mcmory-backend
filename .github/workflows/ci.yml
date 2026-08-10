@@ -1,0 +1,164 @@
+# 게이트 순서는 campus jeongbiseo-backend 승계(TEST-W001 7장).
+# fail-fast — 앞 단계가 깨지면 뒤를 돌리지 않는다.
+name: CI
+
+# feature와 fix는 push 트리거에 넣지 않는다. PR이 열린 뒤에는 push와 pull_request가 각각 발사돼
+# 동일한 런이 2개씩 돌기 때문. PR 대상 브랜치 둘만 push로 받는다.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, dev]
+    paths-ignore: ['docs/**', '**.md']
+  pull_request:
+    branches: [main, dev]
+    paths-ignore: ['docs/**', '**.md']
+
+jobs:
+  ci:
+    name: 'CI — Quality + Test'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # commitlint가 PR 전체 커밋을 검사하려면 전체 이력 필요
+
+      - name: Lint commit messages
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: commitlint.config.mjs
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # format과 build를 같은 Gradle 호출에 섞으면 암묵 의존성 검증이 실패한다(campus 실측)
+      - name: Check format
+        run: ./gradlew checkFormat
+
+      - name: Checkstyle
+        run: ./gradlew checkstyleMain checkstyleTest
+
+      # 테스트 소스도 함께 본다. 빼면 build가 spotbugsTest를 처음 돌려 테스트 코드 위반이
+      # "Build" 스텝 실패로 보고되고 원인을 찾는 데 시간을 쓴다(실측)
+      - name: SpotBugs
+        run: ./gradlew spotbugsMain spotbugsTest
+
+      # Testcontainers MySQL은 ubuntu-latest의 호스트 Docker를 쓴다(사전 설치됨)
+      - name: Test
+        run: ./gradlew test
+
+      # 커버리지 수치 게이트는 두지 않는다(TEST-W001). 리포트만 남긴다
+      - name: Coverage report
+        run: ./gradlew jacocoTestReport
+
+      - name: Build
+        run: ./gradlew build bootJar
+
+  # campus는 ci.yml과 deploy.yml이 각각 main push로 독립 실행돼 CI가 빨간 상태로도 배포가 나갔다.
+  # 여기서는 needs로 묶어 같은 워크플로 안에 둔다. workflow_run 방식은 기능 브랜치에서 배포 정의를
+  # 시험할 수 없고(항상 기본 브랜치 사본이 실행됨) conclusion 가드를 빼먹으면 같은 결함이 되살아난다.
+  #
+  # DEPLOY_ENABLED 변수가 게이트다. EC2 대상과 AWS 계정과 Docker Hub 계정이 정해지기 전까지 켜지 않는다.
+  #
+  # 켜는 시점에 필요한 것:
+  #   Secrets 5종 — DOCKERHUB_USERNAME, DOCKERHUB_TOKEN, EC2_HOST, EC2_SSH_PRIVATE_KEY, ENV
+  #   Variables 2종 — DEPLOY_ENABLED, DOCKER_IMAGE_NAME (후자가 비면 아래 태그가 ":latest"로 깨진다)
+  #
+  # ENV는 .env 전문이 통째로 들어가는 단일 시크릿이고 write-only라 덮어쓰기 사고가 난다.
+  # 최소 키는 application.yml의 ${...} 7종 더하기 배포 compose가 읽는 DB_ROOT_PASSWORD다.
+  # **JWT_SECRET을 빠뜨리면 application.yml의 공개된 dev 기본값으로 뜬다 — 토큰 위조가 가능해진다.**
+  image:
+    name: 'Deploy — 이미지 빌드와 푸시'
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOCKER_IMAGE_NAME: ${{ vars.DOCKER_IMAGE_NAME }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # 품질 게이트는 ci 잡이 이미 통과시켰으므로 여기서는 테스트를 다시 돌리지 않는다
+      - name: Build bootJar
+        run: ./gradlew clean bootJar -x test
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # SHA 태그를 함께 밀어 롤백 대상을 지정할 수 있게 한다
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE_NAME }}:latest
+            ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: 'Deploy — EC2 재기동'
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EC2_SSH_USER: ubuntu
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy compose file to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ env.EC2_SSH_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          # 레포 루트가 아니라 deploy/ 아래에 둔다. 루트에 두면 팀원이 로컬에서 `docker compose up`을
+          # 칠 때 개발용이 아니라 이 배포용 파일이 잡힌다
+          source: 'deploy/compose.yml'
+          target: '/home/ubuntu'
+          strip_components: 1
+
+      - name: Pull and restart
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ env.EC2_SSH_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/ubuntu
+            cat > .env <<'EOF'
+            ${{ secrets.ENV }}
+            EOF
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
+            docker compose ps

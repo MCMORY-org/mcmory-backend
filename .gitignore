@@ -1,0 +1,20 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# 로컬 환경값 — 자격증명을 레포에 넣지 않는다
+.env
+.env.local
+application-local.yml
+
+# OS
+.DS_Store
+
+# FR-012 편지 사진 로컬 저장소(app.letter-images.dir 기본값). 테스트 실행으로도 쌓임
+var/

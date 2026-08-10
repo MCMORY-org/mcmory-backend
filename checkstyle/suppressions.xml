@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+  "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+  "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!--
+  Suppress Checkstyle rules that conflict with spring-java-format,
+  or that are not appropriate for test/generated code.
+-->
+<suppressions>
+
+    <!-- spring-java-format owns import ordering  - disable Checkstyle rule -->
+    <suppress checks="ImportOrder" files=".*\.java"/>
+
+    <!-- spring-java-format owns newline at end of file -->
+    <suppress checks="NewlineAtEndOfFile" files=".*\.java"/>
+
+    <!-- spring-java-format owns trailing whitespace -->
+    <suppress checks="RegexpSingleline" files=".*\.java"/>
+
+    <!-- spring-java-format uses tab indentation; Google Java Style forbids
+         tab characters. Suppress the conflict: spring-java-format wins. -->
+    <suppress checks="FileTabCharacter" files=".*\.java"/>
+
+    <!-- spring-java-format places catch/finally on a new line after the closing
+         brace, but Checkstyle's RightCurly default policy requires same-line
+         placement. spring-java-format is the authoritative formatter (AGENTS 4절),
+         so suppress the conflict. lab checkstyle에 있으나 genesis 시점 팀 레포는
+         try/catch가 없어 누락됐던 스캐폴드 결함 — 약관 도메인(이슈 #6)이 try/catch를
+         도입하며 드러나 lab과 정합하게 추가함. -->
+    <suppress checks="RightCurly" files=".*\.java"/>
+
+    <!-- Test files: magic numbers are acceptable in assertions -->
+    <suppress checks="MagicNumber" files=".*Test\.java"/>
+    <suppress checks="MagicNumber" files=".*IT\.java"/>
+
+    <!-- Application entry point: not a utility class despite having main() -->
+    <suppress checks="HideUtilityClassConstructor" files=".*Application\.java"/>
+
+    <!-- WhitespaceAround is relaxed for lambda/functional patterns in Spring -->
+    <suppress checks="WhitespaceAround" files=".*Config\.java"/>
+
+    <!-- Test sources use Korean/underscore descriptive method names.
+         Path-based (not filename suffix) so fixtures/helpers under src/test are covered too. -->
+    <suppress checks="MethodName" files="[\\/]src[\\/]test[\\/]"/>
+
+    <!-- 컨트롤러의 Swagger 애노테이션(@ExampleObject 응답 봉투 JSON 리터럴, @Operation 설명)은
+         문자열이라 spring-javaformat이 120자 이하로 쪼갤 수 없음(코드 줄은 format이 이미 래핑함).
+         위 ImportOrder 등과 같은 spring-javaformat 충돌 성격이라 컨트롤러 한정으로 LineLength를 완화함. -->
+    <suppress checks="LineLength" files=".*Controller\.java"/>
+
+</suppressions>

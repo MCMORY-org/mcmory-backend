@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Spring dependency injection: field injection creates EI false positives -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+    <!-- JPA entities do not need serialVersionUID unless explicitly serializing -->
+    <Match>
+        <Bug pattern="SE_NO_SERIALVERSIONUID"/>
+    </Match>
+    <!-- Spring Optional / repository return value NullPointerException false positive -->
+    <Match>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+    </Match>
+    <!-- Test code: random usage patterns are intentional -->
+    <Match>
+        <Class name="~.*Test"/>
+        <Bug pattern="DMI_RANDOM_USED_ONLY_ONCE"/>
+    </Match>
+    <!--
+      JPA 엔티티 필드는 영속성 제공자가 리플렉션으로 씀. SpotBugs는 그 쓰기를 볼 수 없어 "쓰이지 않는 필드"로 잡는다.
+      전역 제외가 아니라 엔티티 클래스만 열거하는 이유는 다른 코드에서 같은 경고가 나면 그건 진짜 결함이기 때문이다.
+      엔티티를 추가하면 이 목록에도 넣을 것.
+    -->
+    <Match>
+        <Class name="~com\.mcmory\.backend\..*\.(Member|RefreshToken|Consent|Friend|Product|TasteProfile|Gift|OwnedProduct|Store|StoreReservation|Notification)"/>
+        <Bug pattern="UWF_UNWRITTEN_FIELD,UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR,NP_UNWRITTEN_FIELD"/>
+    </Match>
+    <!-- Lombok generated code: self-assignment on builder fields -->
+    <Match>
+        <Source name="~.*\.java"/>
+        <Bug pattern="SA_FIELD_SELF_ASSIGNMENT"/>
+    </Match>
+</FindBugsFilter>
