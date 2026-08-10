@@ -6,7 +6,7 @@ MCMORY Back-end 레포지토리입니다. **MCMORY**는 멋쟁이사자처럼 �
 
 REST API 서버이며 응답은 전부 공통 봉투(`CustomResponse`)로 나갑니다.
 
-> **현재 상태: CI 골격만 있습니다.** 이 저장소에는 빌드 설정과 GitHub Actions 워크플로와 진입점 클래스만 있고 **도메인 코드는 아직 없습니다.** 제품 코드는 개인 private 저장소(`mcmory-proto-backend`)에서 검증 중이고 이슈 단위로 이곳에 이식합니다. 그래서 아래 내용 중 도메인·API·스모크 부분은 **승격될 코드의 구성**을 미리 기술한 것입니다.
+> **현재 상태: CI 골격만 있습니다.** 이 저장소에는 빌드 설정과 GitHub Actions 워크플로와 진입점 클래스만 있고 **도메인 코드는 아직 없습니다.** 제품 코드는 개인 private 저장소(`mcmory-proto-backend`)에서 검증 중이고 이슈 단위로 이곳에 이식합니다. 그래서 아래 내용 중 **빠른 시작, 로컬 DB, 도메인, API, 스모크** 부분은 **승격될 코드의 구성**을 미리 기술한 것이고 지금은 아직 동작하지 않습니다.
 
 > **`docs/`는 이 저장소에 없습니다.** API명세서·데이터모델·ADR은 상위 작업공간에 있고 git으로 추적되지 않아 **clone해도 따라오지 않습니다**. 저장소 안에서 바로 볼 수 있는 규칙 정본은 `AGENTS.md`입니다.
 
@@ -27,7 +27,7 @@ REST API 서버이며 응답은 전부 공통 봉투(`CustomResponse`)로 나갑
 - **Security**: Spring Security + JWT (jjwt 0.13.0)
 - **API Docs**: springdoc-openapi 3.0.2 (Swagger UI)
 - **Test**: JUnit 5 + Testcontainers (실제 MySQL)
-- **Quality**: spring-javaformat 0.0.47, Checkstyle 10.17.0, SpotBugs 6.5.8, JaCoCo 0.8.14
+- **Quality**: spring-javaformat 0.0.47, Checkstyle 10.17.0, SpotBugs 4.10.2 (Gradle 플러그인 6.5.8), JaCoCo 0.8.14
 
 > **JaCoCo는 리포트만 냅니다. 커버리지 수치 게이트는 두지 않습니다.** 해커톤 일정에서 숫자를 채우려고 의미 없는 테스트를 쓰게 되기 때문이고, 게이트는 "필수 검증 항목 전부 녹색"입니다.
 
@@ -41,6 +41,8 @@ REST API 서버이며 응답은 전부 공통 봉투(`CustomResponse`)로 나갑
 - 쿠키 SameSite는 `Lax`, `secure`는 로컬 기본 `false`이고 배포 프로파일에서만 `true`로 올립니다.
 
 ## 🏃 빠른 시작
+
+> **아직 동작하지 않습니다.** 로컬용 `compose.yml`은 도메인 코드와 함께 승격됩니다. 그전까지 아래 절차는 성립하지 않으며, **루트의 `docker-compose.yml`은 배포 전용이니 로컬에서 실행하지 마세요** — 그것을 실행하면 아직 없는 이미지를 받으려다 깨집니다.
 
 **사전 요구사항: JDK 17, Docker.** Docker는 로컬 MySQL과 Testcontainers 통합 테스트 모두에 필요합니다.
 
@@ -185,7 +187,7 @@ ci       CI 설정
 revert   되돌리기
 ```
 
-> **gitmoji는 아직 확정되지 않았습니다.** 옆 프로젝트(campus-hackathon-2026)는 type 앞에 이모지를 붙였지만 이 팀은 정하지 않았습니다. 팀 컨벤션이 확정되면 이 절을 갱신합니다. 그때까지는 이모지 없이 씁니다.
+> **gitmoji는 확정 전이니 이모지 없이 씁니다.** 팀 컨벤션이 정해지면 이 절과 `commitlint.config.mjs`를 함께 갱신합니다.
 
 - **디렉토리 구조** — 도메인별 **평면 패키지**입니다.
 

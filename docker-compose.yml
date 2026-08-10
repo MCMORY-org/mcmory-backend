@@ -58,6 +58,9 @@ services:
       #
       # --default-character-set=utf8mb4를 빼면 한글이 깨져 들어간다(클라이언트 기본값이 latin1).
       # 이후의 스키마 변경도 같은 방식으로 ALTER TABLE을 직접 건다.
+      #
+      # **배포 DB에는 02-seed.sql을 넣지 않는다.** 시드의 로그인 계정이 README에 적혀 있어
+      # 공개된 자격증명으로 프로덕션에 로그인할 수 있게 된다. 적재하는 것은 01-schema.sql뿐이다.
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$DB_ROOT_PASSWORD --silent"]
       interval: 5s

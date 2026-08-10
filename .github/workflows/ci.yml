@@ -66,9 +66,15 @@ jobs:
   # 여기서는 needs로 묶어 같은 워크플로 안에 둔다. workflow_run 방식은 기능 브랜치에서 배포 정의를
   # 시험할 수 없고(항상 기본 브랜치 사본이 실행됨) conclusion 가드를 빼먹으면 같은 결함이 되살아난다.
   #
-  # DEPLOY_ENABLED 변수가 게이트다. Dockerfile과 docker-compose.yml, EC2 대상, AWS 계정이 정해지기
-  # 전까지는 이 잡을 켜지 않는다. 켜는 시점에 필요한 Secrets는 DOCKERHUB_USERNAME, DOCKERHUB_TOKEN,
-  # EC2_HOST, EC2_SSH_PRIVATE_KEY, ENV 다섯이다.
+  # DEPLOY_ENABLED 변수가 게이트다. EC2 대상과 AWS 계정과 Docker Hub 계정이 정해지기 전까지 켜지 않는다.
+  #
+  # 켜는 시점에 필요한 것:
+  #   Secrets 5종 — DOCKERHUB_USERNAME, DOCKERHUB_TOKEN, EC2_HOST, EC2_SSH_PRIVATE_KEY, ENV
+  #   Variables 2종 — DEPLOY_ENABLED, DOCKER_IMAGE_NAME (후자가 비면 아래 태그가 ":latest"로 깨진다)
+  #
+  # ENV는 .env 전문이 통째로 들어가는 단일 시크릿이고 write-only라 덮어쓰기 사고가 난다.
+  # 최소 키는 application.yml의 ${...} 7종 더하기 배포 compose가 읽는 DB_ROOT_PASSWORD다.
+  # **JWT_SECRET을 빠뜨리면 application.yml의 공개된 dev 기본값으로 뜬다 — 토큰 위조가 가능해진다.**
   image:
     name: 'Deploy — 이미지 빌드와 푸시'
     needs: ci
