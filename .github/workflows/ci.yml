@@ -140,8 +140,11 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ env.EC2_SSH_USER }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          source: 'docker-compose.yml'
+          # 레포 루트가 아니라 deploy/ 아래에 둔다. 루트에 두면 팀원이 로컬에서 `docker compose up`을
+          # 칠 때 개발용이 아니라 이 배포용 파일이 잡힌다
+          source: 'deploy/compose.yml'
           target: '/home/ubuntu'
+          strip_components: 1
 
       - name: Pull and restart
         uses: appleboy/ssh-action@v1.0.3

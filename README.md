@@ -6,9 +6,7 @@ MCMORY Back-end 레포지토리입니다. **MCMORY**는 멋쟁이사자처럼 �
 
 REST API 서버이며 응답은 전부 공통 봉투(`CustomResponse`)로 나갑니다.
 
-> **현재 상태: CI 골격만 있습니다.** 이 저장소에는 빌드 설정과 GitHub Actions 워크플로와 진입점 클래스만 있고 **도메인 코드는 아직 없습니다.** 제품 코드는 개인 private 저장소(`mcmory-proto-backend`)에서 검증 중이고 이슈 단위로 이곳에 이식합니다. 그래서 아래 내용 중 **빠른 시작, 로컬 DB, 도메인, API, 스모크** 부분은 **승격될 코드의 구성**을 미리 기술한 것이고 지금은 아직 동작하지 않습니다.
-
-> **`docs/`는 이 저장소에 없습니다.** API명세서·데이터모델·ADR은 상위 작업공간에 있고 git으로 추적되지 않아 **clone해도 따라오지 않습니다**. 저장소 안에서 바로 볼 수 있는 규칙 정본은 `AGENTS.md`입니다.
+> **도메인 코드는 이식 중입니다.** 지금 여기 있는 것은 빌드 설정과 CI뿐입니다.
 
 ## 📍 API 엔드포인트
 
@@ -41,8 +39,6 @@ REST API 서버이며 응답은 전부 공통 봉투(`CustomResponse`)로 나갑
 - 쿠키 SameSite는 `Lax`, `secure`는 로컬 기본 `false`이고 배포 프로파일에서만 `true`로 올립니다.
 
 ## 🏃 빠른 시작
-
-> **아직 동작하지 않습니다.** 로컬용 `compose.yml`은 도메인 코드와 함께 승격됩니다. 그전까지 아래 절차는 성립하지 않으며, **루트의 `docker-compose.yml`은 배포 전용이니 로컬에서 실행하지 마세요** — 그것을 실행하면 아직 없는 이미지를 받으려다 깨집니다.
 
 **사전 요구사항: JDK 17, Docker.** Docker는 로컬 MySQL과 Testcontainers 통합 테스트 모두에 필요합니다.
 
@@ -136,7 +132,7 @@ MCMORY_BASE=http://localhost:8080 MCMORY_ENVELOPE=1 npm run smoke
 
 > GitHub Actions CI가 `main`과 `dev` push와 PR마다 commitlint, checkFormat, Checkstyle, SpotBugs, test, JaCoCo 리포트, build bootJar 순으로 동일 게이트를 재검증합니다. fail-fast라 앞이 깨지면 뒤를 돌리지 않습니다. `docs/**`와 `**.md` 변경은 CI를 트리거하지 않습니다.
 >
-> 배포 잡은 `DEPLOY_ENABLED` 저장소 변수(현재 `false`)로 잠겨 있습니다. `Dockerfile`과 배포용 `docker-compose.yml`은 이미 있고, **EC2 인스턴스와 Docker Hub 계정이 정해지면** compose의 이미지 이름을 채우고 시크릿 5종을 등록한 뒤 켭니다.
+> 배포 잡은 `DEPLOY_ENABLED` 저장소 변수로 잠겨 있습니다. 배포 정의는 `Dockerfile`과 `deploy/compose.yml`이고, **`deploy/compose.yml`을 로컬에서 실행하지 마세요** — 운영 컨테이너 구성입니다.
 
 ## 💻 개발 환경 설정 (필수!)
 

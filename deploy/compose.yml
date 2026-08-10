@@ -1,4 +1,5 @@
-# 배포용이다. 로컬 개발용 `compose.yml`과 **다른 파일**이니 이름이 비슷하다고 재사용하지 말 것.
+# 배포용이다. 레포 루트의 개발용 compose와 다른 파일이라 deploy/ 아래에 둔다 —
+# 루트에 두면 로컬에서 `docker compose up`을 칠 때 이쪽이 잡힌다.
 # 로컬용은 MySQL만 띄우고, 이쪽은 앱과 MySQL을 함께 띄운다.
 #
 # CI의 deploy 잡이 이 파일을 EC2로 scp한 뒤 `.env`(ENV 시크릿 전문)를 옆에 쓰고 pull과 up을 돈다.
