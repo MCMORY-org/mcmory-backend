@@ -1,0 +1,46 @@
+# 백엔드 전용 로컬 DB. 이 레포만 clone한 사람이 별도 파일 없이 서버를 띄울 수 있게 하는 것이 목적이다.
+#
+# 상위 `prototype/compose.yml`과 **다른 컨테이너**다. 그쪽은 Next.js 프로토타입(`mcmory` DB)과 백엔드(`mcmory_java`)가
+# 한 컨테이너를 나눠 쓰는 구성이고, 여기는 백엔드 하나만 본다.
+#
+# **둘을 동시에 띄울 수 없다.** 포트 3307이 겹치기 때문인데, 이건 의도한 것이다 — `application.yml`의 DB_URL 기본값이
+# 3307이라 포트를 옮기면 팀원이 env를 따로 줘야 한다. 데모까지 돌리는 사람은 상위 것을, 백엔드만 필요한 사람은 이것을 쓴다.
+name: mcmory-backend
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mcmory-backend-mysql
+    # 복제 없는 로컬 단일이라 binlog 불필요 — 디스크 절약
+    command: ["--skip-log-bin", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      # 로컬 컨테이너 전용의 버리는 값이다. 어떤 원격 시스템의 자격증명도 아니고, 이 포트는 호스트 밖으로 나가지 않는다.
+      # 실제 비밀은 `.env`와 `secrets/`에 두고 .gitignore가 막는다(SEC-W001). 배포 DB 비밀번호는 이 파일과 무관하다
+      MYSQL_ROOT_PASSWORD: mcmory
+      # 처음부터 백엔드 DB로 만든다. 상위 compose는 `mcmory`(데모용)를 만들어 수동 생성 절차가 따로 필요했다
+      MYSQL_DATABASE: mcmory_java
+    ports:
+      # application.yml의 DB_URL 기본값이 3307이라 여기도 3307이어야 팀원이 env 없이 뜬다.
+      # 상위 compose도 3307을 쓰므로 **둘을 동시에 띄울 수 없다** — 하나만 쓴다.
+      # 두 프로토타입을 나란히 돌리는 사람은 상위 것을, 백엔드만 필요한 사람은 이것을 쓴다
+      - "3307:3306"
+    volumes:
+      - mcmory_backend_mysql:/var/lib/mysql
+      # 이 레포 안 스키마와 시드가 첫 기동에 자동 적용된다. 스키마 사본을 늘리지 않으려고
+      # 테스트가 쓰는 것과 같은 파일을 그대로 마운트한다
+      - ./src/test/resources/db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -pmcmory --silent"]
+      interval: 5s
+      timeout: 3s
+      start_period: 30s
+      retries: 12
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+volumes:
+  mcmory_backend_mysql:
