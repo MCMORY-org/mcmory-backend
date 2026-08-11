@@ -72,6 +72,13 @@ public class FriendController {
 				Map.of("id", updated.getId(), "name", updated.getName(), "phone", updated.getPhone())));
 	}
 
+	/** `Start-02` 설문 링크 발급임. 오리진은 서버가 모르므로 `path`만 주고 앞자리는 화면이 붙임. */
+	@PostMapping("/{id}/survey")
+	public CustomResponse<Map<String, Object>> issueSurveyLink(@PathVariable Long id) {
+		String token = this.friends.issueSurveyToken(this.currentMember.requireId(), id);
+		return CustomResponse.ok(Map.of("token", token, "path", "/s/" + token));
+	}
+
 	/**
 	 * FR-011 취향 저장 귀속임(ADR-009). 수신자 본인 답변은 덮지 않고 updated를 false로 돌려주므로 화면이 그 값을 보고 안내해야
 	 * 함.

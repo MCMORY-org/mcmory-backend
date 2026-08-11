@@ -49,6 +49,7 @@ CREATE TABLE friend (
   owner_member_id BIGINT      NOT NULL,
   name            VARCHAR(20) NULL,                     -- 삭제 즉시 NULL 파기(ADR-003)
   phone           VARCHAR(11) NULL,
+  survey_token    VARCHAR(24) NULL UNIQUE,              -- Start-02 설문 링크. 발급 전에는 NULL(FEAT-W001)
   created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at      DATETIME    NULL,
   CONSTRAINT fk_friend_owner FOREIGN KEY (owner_member_id) REFERENCES member(id),

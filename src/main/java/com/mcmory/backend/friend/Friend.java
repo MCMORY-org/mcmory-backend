@@ -31,6 +31,10 @@ public class Friend {
 	@Column(length = 11)
 	private String phone;
 
+	/** Start-02 설문 링크의 토큰임(FEAT-W001). 발급 전에는 NULL임. */
+	@Column(name = "survey_token", length = 24, unique = true)
+	private String surveyToken;
+
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime createdAt;
 
@@ -59,6 +63,16 @@ public class Friend {
 		this.deletedAt = LocalDateTime.now();
 		this.name = null;
 		this.phone = null;
+		// 파기된 친구의 설문 링크는 열리면 안 됨
+		this.surveyToken = null;
+	}
+
+	/** 설문 토큰 발급임. **이미 있으면 그대로 둠** — 바뀌면 이미 보낸 링크가 죽음. */
+	public String issueSurveyToken(String candidate) {
+		if (this.surveyToken == null) {
+			this.surveyToken = candidate;
+		}
+		return this.surveyToken;
 	}
 
 	/** 화면에 보일 이름임. 파기된 친구는 컬럼이 NULL이라 표시 시점에 문구로 바꿈. */

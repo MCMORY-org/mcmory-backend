@@ -10,6 +10,7 @@ import tools.jackson.databind.ObjectMapper;
 import com.mcmory.backend.global.apiPayload.code.FriendErrorCode;
 import com.mcmory.backend.global.apiPayload.exception.CustomException;
 import com.mcmory.backend.common.Phones;
+import com.mcmory.backend.common.Tokens;
 import com.mcmory.backend.taste.TasteProfile;
 import com.mcmory.backend.taste.TasteProfileRepository;
 
@@ -74,7 +75,8 @@ public class FriendService {
 
 	@Transactional
 	public void erase(Long memberId, Long friendId) {
-		Friend friend = this.friends.findByIdAndOwnerMemberIdAndDeletedAtIsNull(friendId, memberId)
+		// 설문 제출과 같은 행 잠금을 씀 — 안 그러면 삭제 직후 도착한 제출이 파기된 친구에 취향을 다시 심음
+		Friend friend = this.friends.findByIdAndOwnerForUpdate(friendId, memberId)
 			.orElseThrow(() -> new CustomException(FriendErrorCode.NOT_FOUND));
 
 		friend.erase();
@@ -89,7 +91,8 @@ public class FriendService {
 	 */
 	@Transactional
 	public boolean saveTaste(Long memberId, Long friendId, String summary) {
-		Friend friend = this.friends.findByIdAndOwnerMemberIdAndDeletedAtIsNull(friendId, memberId)
+		// 설문 제출과 같은 행 잠금을 씀 — 동시에 들어오면 둘 다 DELETE를 통과해 uq_taste_friend가 터짐
+		Friend friend = this.friends.findByIdAndOwnerForUpdate(friendId, memberId)
 			.orElseThrow(() -> new CustomException(FriendErrorCode.NOT_FOUND));
 
 		// ADR-009 결정 2: 본인 입력이 대리 입력을 이김. 수신자가 직접 답한 취향은 발송자의 수정으로 덮지 않음 —
@@ -104,6 +107,19 @@ public class FriendService {
 		this.tasteProfiles.flush();
 		this.tasteProfiles.save(TasteProfile.forFriend(friend.getId(), toAnswersJson(summary)));
 		return true;
+	}
+
+	/**
+	 * FEAT-W001 설문 링크 발급임. **멱등이다** — 재호출이 같은 토큰을 줌.
+	 *
+	 * 동시 호출은 서로 다른 토큰을 만들고 나중 것이 이김. 더블클릭 수준이라 잠그지 않음.
+	 */
+	@Transactional
+	public String issueSurveyToken(Long memberId, Long friendId) {
+		Friend friend = this.friends.findByIdAndOwnerMemberIdAndDeletedAtIsNull(friendId, memberId)
+			.orElseThrow(() -> new CustomException(FriendErrorCode.NOT_FOUND));
+
+		return friend.issueSurveyToken(Tokens.issue());
 	}
 
 	/**
