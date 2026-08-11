@@ -34,7 +34,7 @@ INSERT INTO store (id, name, address, lat, lng, open_time, close_time, repair_av
 -- "친구에게 슬랙스를 선물하세요"가 나온다.
 --
 -- demo_serial을 넣지 않는다: 의류는 FR-028 시리얼 등록 대상이 아니고, 넣으면 그 화면에 옷이 뜬다.
--- image_url은 NULL로 둔다. 2026-08-12에 imageUrl이 응답에 실리면서 값이 있으면 화면이 그것을 쓰는데,
+-- image_url은 NULL로 둔다. imageUrl이 응답에 실리고 값이 있으면 화면이 그것을 쓰는데,
 -- 여기 이모지를 넣으면 화면이 `🎒`를 이미지 주소로 받는다. 실제 MCM CDN 주소는 06과 07이 채운다.
 --
 -- **임시 데이터다.** F28(최은서)의 실제 MCM 의류 자료가 오면 이름과 가격과 색상을 교체하되

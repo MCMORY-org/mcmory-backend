@@ -81,7 +81,7 @@ public class RecommendService {
 			@Schema(description = "상품 색상. **취향 색상 6종·편지지 색 4종과 다른 축임** — 시드에 카키·브라운이 있어 6종 밖임. 삭제된 상품이면 `null`임",
 					example = "블랙", requiredMode = Schema.RequiredMode.NOT_REQUIRED) String color,
 			@Schema(description = "상품 이미지 URL임. **있으면 이 값을 그대로 쓰고, `null`이면 화면이 자체 규약(`/products/{id}.webp`)으로 고를 것.** "
-					+ "MCM 공식 CDN 주소라 우리 서버를 거치지 않음(2026-08-12 카탈로그 50건부터 채워짐). 옛 시드 상품은 아직 `null`임",
+					+ "MCM 공식 CDN 주소라 우리 서버를 거치지 않음. 옛 시드 상품은 `null`이라 화면이 폴백함",
 					example = "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default",
 					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String imageUrl) {
 	}
