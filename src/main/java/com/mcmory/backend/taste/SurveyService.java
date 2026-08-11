@@ -79,7 +79,7 @@ public class SurveyService {
 			.map(TasteProfile::isFromInvite)
 			.orElse(false);
 
-		// FEAT-W003: 발송자가 켠 축만 화면이 그림. 저장한 적 없는 친구는 세 축 전부임
+		// FEAT-W003: 발송자가 켠 축만 화면이 그림
 		return new SurveyView(senderName, friend.displayName(), answered, SurveyAxes.parse(friend.getSurveyAxes()));
 	}
 

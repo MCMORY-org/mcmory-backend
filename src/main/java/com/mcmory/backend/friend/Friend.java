@@ -83,15 +83,12 @@ public class Friend {
 		return this.surveyToken;
 	}
 
-	/**
-	 * FEAT-W003 질문 선별 저장임. 토큰과 달리 **재발급마다 덮어씀** — 발송자가 토글을 고쳐 다시 저장하는 것이 정상 경로이고, 링크는 그대로
-	 * 살아 있어야 함.
-	 */
+	/** 질문 선별 저장임. 토큰과 달리 덮어쓰는 것이 정상 경로임 — 왜는 {@link FriendService#issueSurveyToken}. */
 	public void selectSurveyAxes(String axes) {
 		this.surveyAxes = axes;
 	}
 
-	/** 저장된 질문 선별임. NULL이면 세 축 전부라는 뜻임(FEAT-W003 이전 행 호환). */
+	/** 원문 반환임. 해석은 {@link com.mcmory.backend.taste.SurveyAxes#parse}. */
 	public String getSurveyAxes() {
 		return this.surveyAxes;
 	}

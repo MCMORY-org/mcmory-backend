@@ -231,6 +231,18 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 			.isEqualTo("[\"colors\",\"styles\",\"bags\"]");
 	}
 
+	/** 구형 화면의 재호출이 발송자의 선택을 세 축으로 되돌리면 안 됨(2026-08-11 codex 검토). */
+	@Test
+	void 축을_안_보낸_재발급은_저장된_선택을_지우지_않는다() {
+		var created = post("/api/v1/friends", "{\"name\":\"보존친구\",\"phone\":\"01055550013\"}");
+		long friendId = created.body().get("friend").get("id").asLong();
+
+		post("/api/v1/friends/" + friendId + "/survey", "{\"axes\":[\"colors\"]}");
+		var again = post("/api/v1/friends/" + friendId + "/survey", null);
+
+		assertThat(again.body().get("axes").toString()).as(again.text()).isEqualTo("[\"colors\"]");
+	}
+
 	@Test
 	void 색상과_스타일을_둘_다_끄면_발급이_400이다() {
 		var created = post("/api/v1/friends", "{\"name\":\"가방만친구\",\"phone\":\"01055550012\"}");
@@ -239,11 +251,19 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 		// 가방은 점수에 안 쓰여 답을 받아도 추천이 그대로임. 제출 단계의 같은 규칙을 발급 단계로 당긴 것임
 		var bagsOnly = post("/api/v1/friends/" + friendId + "/survey", "{\"axes\":[\"bags\"]}");
 		var unknown = post("/api/v1/friends/" + friendId + "/survey", "{\"axes\":[\"scent\"]}");
+		// 빈 배열은 생략과 다름. 셋 다 끈 것을 세 축 전부로 되돌리면 발송자가 고른 것의 정반대가 됨
+		var empty = post("/api/v1/friends/" + friendId + "/survey", "{\"axes\":[]}");
+		// null 원소가 NPE로 500이 되면 사용자 입력 오류가 서버 오류로 둔갑함
+		var withNull = post("/api/v1/friends/" + friendId + "/survey", "{\"axes\":[null,\"colors\"]}");
 
 		assertThat(bagsOnly.status()).as(bagsOnly.text()).isEqualTo(400);
 		assertThat(bagsOnly.code()).isEqualTo("FRIEND400_4");
 		assertThat(unknown.status()).as(unknown.text()).isEqualTo(400);
 		assertThat(unknown.code()).isEqualTo("FRIEND400_4");
+		assertThat(empty.status()).as(empty.text()).isEqualTo(400);
+		assertThat(empty.code()).isEqualTo("FRIEND400_4");
+		assertThat(withNull.status()).as(withNull.text()).isEqualTo(400);
+		assertThat(withNull.code()).isEqualTo("FRIEND400_4");
 	}
 
 	/** 이름으로 친구 id를 되찾음. */

@@ -1,5 +1,6 @@
 package com.mcmory.backend.taste;
 
+import java.util.Arrays;
 import java.util.List;
 
 import com.mcmory.backend.global.apiPayload.code.FriendErrorCode;
@@ -33,21 +34,22 @@ public final class SurveyAxes {
 		if (stored == null || stored.isBlank()) {
 			return ALL;
 		}
-		List<String> picked = List.of(stored.split(","));
+		List<String> picked = Arrays.stream(stored.split(",")).map(String::trim).toList();
 		return ALL.stream().filter(picked::contains).toList();
 	}
 
 	/**
-	 * 저장 형태로 정규화함. 비어 있으면 NULL(세 축 전부)임.
+	 * 저장 형태로 정규화함. 허용값 밖, 빈 목록, `colors`와 `styles`를 둘 다 끈 것은 전부 `FRIEND400_4`임.
 	 *
-	 * `colors`와 `styles`를 둘 다 끄면 막음 — 가방은 점수에 안 쓰여서 답을 받아도 추천이 그대로임(설문 제출의 같은 규칙과 짝).
+	 * 가방만 물으면 답을 받아도 추천이 그대로라 막음(설문 제출의 같은 규칙과 짝).
 	 */
 	public static String format(List<String> raw) {
 		if (raw == null || raw.isEmpty()) {
-			return null;
+			throw new CustomException(FriendErrorCode.INVALID_ANSWER);
 		}
 		for (String axis : raw) {
-			if (!ALL.contains(axis)) {
+			// null 원소를 List.of의 contains에 넘기면 사용자 입력 오류가 NPE로 바뀌어 COMMON500이 됨
+			if (axis == null || !ALL.contains(axis)) {
 				throw new CustomException(FriendErrorCode.INVALID_ANSWER);
 			}
 		}
