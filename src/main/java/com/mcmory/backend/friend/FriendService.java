@@ -12,6 +12,7 @@ import com.mcmory.backend.global.apiPayload.code.FriendErrorCode;
 import com.mcmory.backend.global.apiPayload.exception.CustomException;
 import com.mcmory.backend.common.Phones;
 import com.mcmory.backend.common.Tokens;
+import com.mcmory.backend.taste.SurveyAxes;
 import com.mcmory.backend.taste.TasteProfile;
 import com.mcmory.backend.taste.TasteProfileRepository;
 
@@ -125,16 +126,26 @@ public class FriendService {
 	}
 
 	/**
-	 * FEAT-W001 설문 링크 발급임. **멱등이다** — 재호출이 같은 토큰을 줌.
-	 *
-	 * 동시 호출은 서로 다른 토큰을 만들고 나중 것이 이김. 더블클릭 수준이라 잠그지 않음.
+	 * 설문 링크 발급임(FEAT-W001). **토큰은 멱등이고 질문 선별(FEAT-W003)만 덮어씀** — 토글을 고쳐 다시 저장해도 이미 보낸 링크가
+	 * 살아 있어야 함.
 	 */
 	@Transactional
-	public String issueSurveyToken(Long memberId, Long friendId) {
-		Friend friend = this.friends.findByIdAndOwnerMemberIdAndDeletedAtIsNull(friendId, memberId)
+	public SurveyLink issueSurveyToken(Long memberId, Long friendId, List<String> axes) {
+		// 삭제·제출과 같은 행 잠금을 씀 — 안 그러면 이 UPDATE가 동시 삭제를 되살림(정적 UPDATE가 읽어둔 이름·deletedAt을 다시
+		// 씀)
+		Friend friend = this.friends.findByIdAndOwnerForUpdate(friendId, memberId)
 			.orElseThrow(() -> new CustomException(FriendErrorCode.NOT_FOUND));
 
-		return friend.issueSurveyToken(Tokens.issue());
+		// 축을 안 보낸 호출은 저장값을 건드리지 않음 — 기본값으로 덮으면 구형 화면의 재호출이 발송자의 선택을 세 축으로 되돌림
+		if (axes != null) {
+			friend.selectSurveyAxes(SurveyAxes.format(axes));
+		}
+
+		return new SurveyLink(friend.issueSurveyToken(Tokens.issue()), SurveyAxes.parse(friend.getSurveyAxes()));
+	}
+
+	/** 발급 결과임. `axes`는 정규화된 질문 선별이라 화면이 저장 결과를 되받아 그림. */
+	public record SurveyLink(String token, List<String> axes) {
 	}
 
 	/**
