@@ -10,8 +10,6 @@ import com.mcmory.backend.friend.Friend;
 import com.mcmory.backend.friend.FriendRepository;
 import com.mcmory.backend.global.apiPayload.code.FriendErrorCode;
 import com.mcmory.backend.global.apiPayload.exception.CustomException;
-import com.mcmory.backend.member.Member;
-import com.mcmory.backend.member.MemberRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,16 +37,16 @@ public class SurveyService {
 
 	private final FriendRepository friends;
 
-	private final MemberRepository members;
+	private final AnonNicknameProvider anonNicknames;
 
 	private final TasteProfileRepository tasteProfiles;
 
 	private final ObjectMapper objectMapper;
 
-	public SurveyService(FriendRepository friends, MemberRepository members, TasteProfileRepository tasteProfiles,
-			ObjectMapper objectMapper) {
+	public SurveyService(FriendRepository friends, AnonNicknameProvider anonNicknames,
+			TasteProfileRepository tasteProfiles, ObjectMapper objectMapper) {
 		this.friends = friends;
-		this.members = members;
+		this.anonNicknames = anonNicknames;
 		this.tasteProfiles = tasteProfiles;
 		this.objectMapper = objectMapper;
 	}
@@ -61,7 +59,8 @@ public class SurveyService {
 	public SurveyView read(String surveyToken) {
 		Friend friend = requireFriend(surveyToken, false);
 
-		String senderName = this.members.findById(friend.getOwnerMemberId()).map(Member::getName).orElse("친구");
+		// 발송자 실명을 토큰 소지자에게 주지 않음. 표시명 규칙이 미결이라 지금은 더미임(AnonNicknameProvider 주석)
+		String senderName = this.anonNicknames.senderNameFor(friend.getId());
 
 		boolean answered = this.tasteProfiles.findByFriendId(friend.getId())
 			.map(TasteProfile::isFromInvite)
