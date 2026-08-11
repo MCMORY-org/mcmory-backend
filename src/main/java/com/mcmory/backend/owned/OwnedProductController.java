@@ -9,6 +9,7 @@ import com.mcmory.backend.global.apiPayload.code.OwnedProductErrorCode;
 import com.mcmory.backend.global.apiPayload.exception.CustomException;
 import com.mcmory.backend.product.Product;
 import com.mcmory.backend.product.ProductRepository;
+import com.mcmory.backend.styling.StylingService;
 
 import com.mcmory.backend.global.apiPayload.CustomResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,11 +40,14 @@ public class OwnedProductController {
 
 	private final CurrentMember currentMember;
 
-	public OwnedProductController(OwnedProductRepository owned, ProductRepository products,
-			CurrentMember currentMember) {
+	private final StylingService styling;
+
+	public OwnedProductController(OwnedProductRepository owned, ProductRepository products, CurrentMember currentMember,
+			StylingService styling) {
 		this.owned = owned;
 		this.products = products;
 		this.currentMember = currentMember;
+		this.styling = styling;
 	}
 
 	@Schema(name = "OwnedRegisterRequest", description = "데모 시리얼로 보유 제품을 등록하는 요청임(20번).")
@@ -271,6 +275,54 @@ public class OwnedProductController {
 		String category = product.getCategory();
 		return CustomResponse.ok(new CareGuide(target.getId(), product.getName(), category,
 				CARE_GUIDE.getOrDefault(category, CARE_GUIDE_DEFAULT)));
+	}
+
+	@Operation(summary = "AI 스타일링 (FR-023)",
+			description = """
+					인증 필수임. 보유 제품 하나에 어울리는 상품 3건과 근거 문구를 줌(화면 `CONTINUE-02`).
+
+					함정 1: **상품 선정은 언제나 서버 규칙임.** 보유 제품과 카테고리가 겹치지 않는 것 중 스타일 태그 교집합 순으로 고르고, 결과끼리도 카테고리를 겹치지 않게 함. 코디 화면이라 의류를 먼저 채움.
+
+					함정 2: **`reasonSource`가 `LLM`일 때만 AI라고 표기할 것.** 모델 호출이 실패하거나 느리거나 꺼져 있으면 규칙 문구로 조용히 폴백하고 그 값이 `RULE`이 됨. 폴백 화면에 AI 단정 문구를 그대로 두면 허위임.
+
+					함정 3: 첫 항목만 `PERSONAL`이고 나머지는 고정 `GENERAL` 문구임(ADR-009). 모델 호출도 그래서 요청당 1회임.
+
+					함정 4: 없는 id, 남의 제품, 삭제된 제품, **상품 연결이 끊긴 제품**을 모두 `OWNED404_2`로 응답함 — 관리 방법(#32)과 같은 계약임.""")
+	@ApiResponses({ @ApiResponse(responseCode = "200", description = "추천 반환",
+			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "성공", value = """
+					{
+					  "isSuccess": true,
+					  "code": "200",
+					  "message": "OK",
+					  "result": {
+					    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품" },
+					    "reasonSource": "LLM",
+					    "results": [
+					      {
+					        "productId": 13,
+					        "name": "로고 자카드 니트",
+					        "category": "WOMAN TOP",
+					        "price": 690000,
+					        "officialUrl": "https://kr.mcmworldwide.com",
+					        "reasonType": "PERSONAL",
+					        "reason": "평소 미니멀 스타일을 즐기시네요"
+					      }
+					    ]
+					  }
+					}
+					"""))),
+			@ApiResponse(responseCode = "401", description = "비로그인",
+					content = @Content(mediaType = "application/json",
+							examples = @ExampleObject(name = "AUTH401_1", value = """
+									{ "isSuccess": false, "code": "AUTH401_1", "message": "로그인이 필요합니다", "result": null }
+									"""))),
+			@ApiResponse(responseCode = "404", description = "없는 id, 남의 제품, 삭제된 제품, 상품 연결이 끊긴 제품", content = @Content(
+					mediaType = "application/json", examples = @ExampleObject(name = "OWNED404_2", value = """
+							{ "isSuccess": false, "code": "OWNED404_2", "message": "제품 정보를 찾을 수 없습니다", "result": null }
+							"""))) })
+	@GetMapping("/{id}/styling")
+	public CustomResponse<StylingService.Result> styling(@PathVariable Long id) {
+		return CustomResponse.ok(this.styling.styling(this.currentMember.requireId(), id));
 	}
 
 	@Operation(summary = "보유 제품 삭제 (#21)",

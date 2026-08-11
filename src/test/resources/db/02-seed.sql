@@ -1,10 +1,11 @@
 -- 컨테이너의 character_set_client 기본값이 latin1이라 이 선언이 없으면 한글이 깨져 저장된다.
 SET NAMES utf8mb4;
 
--- 시연용 시드. prototype/db/init/02-seed.sql의 사본이며 password_hash만 다르다.
--- 원본이 바뀌면 이 사본도 같은 커밋에서 갱신할 것.
+-- 시연용 시드. 원래 prototype/db/init/02-seed.sql의 사본으로 시작했으나 **더 이상 사본이 아니다** —
+-- 2026-08-11 FEAT-W002에서 코디용 의류 8건이 여기에만 들어갔다. 이 파일이 백엔드 정본이고,
+-- 함께 갱신할 대상은 prototype이 아니라 deploy/03-deploy-seed.sql이다.
 --
--- 차이 하나: password_hash가 평문 '1234'가 아니라 BCrypt 해시다(ADR-013 결정 1의 이식 결과).
+-- 차이 하나 더: password_hash가 평문 '1234'가 아니라 BCrypt 해시다(ADR-013 결정 1의 이식 결과).
 -- Next.js 프로토타입은 평문을 비교하므로 두 값이 같을 수 없다. 로그인 비밀번호는 양쪽 모두 1234다.
 INSERT INTO member (id, name, phone, password_hash, birth_date, gender, sms_opt_in) VALUES
   (1, '테스터', '01012345678', '$2a$10$ru2r9OwcGSksJ8nDGOQtSerfR7Mcs11C6zXnyhqmv3NEzv3F2pCnm', '2000-01-01', 'NONE', FALSE),
@@ -45,6 +46,25 @@ INSERT INTO product (id, name, category, color, price, image_url, official_url, 
   (8, '밀라 미니 크로스바디', '가방', '핑크', 620000, '👛', 'https://kr.mcmworldwide.com', JSON_ARRAY('러블리','캐주얼'), 'MX2024H663'),
   (9, '비세토스 체인 월렛', '지갑', '골드', 450000, '💰', 'https://kr.mcmworldwide.com', JSON_ARRAY('러블리','포멀'), 'MX2024I774'),
   (10, 'Aren 집업 파우치', '가죽 소품', '그레이', 320000, '🧳', 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀','스트릿'), 'MX2024J885');
+
+-- 코디용 의류다(FR-023 AI 스타일링). **선물 대상이 아니다** — 선물 적격은 가방과 지갑과 가죽 소품뿐이고
+-- RecommendService와 GiftService가 카테고리로 그것을 강제한다. 여기 카테고리를 그 셋 중 하나로 바꾸면
+-- "친구에게 슬랙스를 선물하세요"가 나온다.
+--
+-- demo_serial을 넣지 않는다: 의류는 FR-028 시리얼 등록 대상이 아니고, 넣으면 그 화면에 옷이 뜬다.
+-- image_url도 넣지 않는다: 죽은 컬럼이고 프론트는 productId로 이미지를 해석한다(F29).
+--
+-- **임시 데이터다.** F28(최은서)의 실제 MCM 의류 자료가 오면 이름과 가격과 색상을 교체하되
+-- **id 11에서 18은 유지한다** — 프론트 이미지 규약이 /products/{id}.webp라 id가 바뀌면 전부 다시 매핑해야 한다.
+INSERT INTO product (id, name, category, color, price, official_url, style_tags) VALUES
+  (11, '워싱 데님 재킷', 'WOMAN OUTER', '블루', 1250000, 'https://kr.mcmworldwide.com', JSON_ARRAY('캐주얼','스트릿')),
+  (12, '루렉스 데님 플레어 팬츠', 'WOMAN BOTTOM', '블루', 830000, 'https://kr.mcmworldwide.com', JSON_ARRAY('캐주얼','러블리')),
+  (13, '로고 자카드 니트', 'WOMAN TOP', '베이지', 690000, 'https://kr.mcmworldwide.com', JSON_ARRAY('클래식','미니멀')),
+  (14, '비세토스 실크 블라우스', 'WOMAN TOP', '화이트', 580000, 'https://kr.mcmworldwide.com', JSON_ARRAY('포멀','클래식')),
+  (15, '테일러드 울 코트', 'WOMAN OUTER', '블랙', 1890000, 'https://kr.mcmworldwide.com', JSON_ARRAY('포멀','클래식')),
+  (16, '플리츠 미디 스커트', 'WOMAN BOTTOM', '핑크', 620000, 'https://kr.mcmworldwide.com', JSON_ARRAY('러블리','미니멀')),
+  (17, '오버핏 후디', 'WOMAN TOP', '그레이', 450000, 'https://kr.mcmworldwide.com', JSON_ARRAY('스트릿','캐주얼')),
+  (18, '스트레이트 슬랙스', 'WOMAN BOTTOM', '블랙', 520000, 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀','포멀'));
 
 INSERT INTO store (id, name, address, lat, lng, open_time, close_time, repair_available) VALUES
   (1, 'MCM 강남 본점', '서울 강남구 압구정로', 37.5270000, 127.0280000, '10:30', '20:00', TRUE),

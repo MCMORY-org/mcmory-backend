@@ -1,5 +1,7 @@
 package com.mcmory.backend.product;
 
+import java.util.Set;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -59,6 +61,21 @@ public class Product {
 	}
 
 	/** FR-024 관리 방법의 키임(ERD 주석). 시드에는 가방, 지갑, 가죽 소품 셋이 있음. */
+	/**
+	 * 선물로 보낼 수 있는 카테고리임. 시드에 코디용 의류(WOMAN OUTER, WOMAN TOP, WOMAN BOTTOM)가 들어오면서 생긴 구분임 —
+	 * 의류는 FR-023 스타일링 제안 대상이지 선물 대상이 아님.
+	 *
+	 * 컬럼을 새로 만들지 않고 카테고리로 판정하는 이유는 스키마 변경을 피하기 위함임. 카테고리가 늘면 여기를 고칠 것.
+	 */
+	private static final Set<String> GIFT_CATEGORIES = Set.of("가방", "지갑", "가죽 소품");
+
+	/**
+	 * 선물 추천과 발송의 적격 판정임. **두 경로가 이 하나를 함께 봄** — 추천만 막으면 productId를 직접 실은 발송으로 뚫림.
+	 */
+	public boolean isGiftEligible() {
+		return GIFT_CATEGORIES.contains(this.category);
+	}
+
 	public String getCategory() {
 		return this.category;
 	}
