@@ -55,6 +55,11 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
 
+	// AWS Bedrock — FR-023 스타일링 근거 문구. 플래그(bedrock.enabled)가 꺼지면 빈 자체가 안 만들어지고
+	// 규칙 문구로 폴백함. 서울 리전이고 추론 프로파일 id(apac. 접두사)가 필수임
+	implementation platform('software.amazon.awssdk:bom:2.51.4')
+	implementation 'software.amazon.awssdk:bedrockruntime'
+
 	annotationProcessor 'org.projectlombok:lombok'
 	compileOnly 'org.projectlombok:lombok'
 
