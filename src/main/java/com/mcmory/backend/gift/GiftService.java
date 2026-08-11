@@ -132,7 +132,11 @@ public class GiftService {
 	public record ProductView(@Schema(description = "상품 id임. 화면은 이 값으로 상품 이미지를 고름", example = "1") Long productId,
 			@Schema(description = "상품 이름임. 스냅샷이 아니라 현재 값이라 상품이 바뀌면 바뀐 값이 보임", example = "숄더백") String name,
 			@Schema(description = "상품 가격임. 이름과 마찬가지로 스냅샷이 아니라 현재 값임. 값이 없는 상품은 `0`으로 내려감. "
-					+ "**단위는 원임** — 추천 요청의 예산(만원 단위)과 다르므로 그대로 비교하지 말 것", example = "890000") int price) {
+					+ "**단위는 원임** — 추천 요청의 예산(만원 단위)과 다르므로 그대로 비교하지 말 것", example = "890000") int price,
+			@Schema(description = "상품 이미지 URL임. **있으면 이 값을 그대로 쓰고, `null`이면 화면이 자체 규약(`/products/{id}.webp`)으로 고를 것.** "
+					+ "MCM 공식 CDN 주소라 우리 서버를 거치지 않음. 옛 시드 상품은 아직 `null`임",
+					example = "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String imageUrl) {
 	}
 
 	public record OwnedFromGift(
@@ -253,7 +257,7 @@ public class GiftService {
 			.orElseGet(() -> this.owned.save(OwnedProduct.fromGift(memberId, product.getId(), gift.getId())));
 
 		return new OwnedFromGift(owned.getId(), owned.getSource(), new ProductView(product.getId(), product.getName(),
-				(product.getPrice() == null) ? 0 : product.getPrice()));
+				(product.getPrice() == null) ? 0 : product.getPrice(), product.getImageUrl()));
 	}
 
 	/** FR-013 선물 발송임. ADR-011에 따라 발송 시점에 SENT로 확정함. */
@@ -330,8 +334,10 @@ public class GiftService {
 				: this.products.findById(gift.getProductId()).orElse(null);
 
 		return new InviteView(false, gift.getAnonNickname(), gift.getLetterBody(), readImageUrls(gift),
-				gift.getLetterColor(), (product == null) ? null : new ProductView(product.getId(), product.getName(),
-						(product.getPrice() == null) ? 0 : product.getPrice()),
+				gift.getLetterColor(),
+				(product == null) ? null
+						: new ProductView(product.getId(), product.getName(),
+								(product.getPrice() == null) ? 0 : product.getPrice(), product.getImageUrl()),
 				gift.getOpenedAt());
 	}
 

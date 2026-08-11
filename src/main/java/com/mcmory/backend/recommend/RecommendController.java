@@ -74,24 +74,27 @@ public class RecommendController {
 
 					함정 5 — `FRIEND404_1`은 `friendId`를 보내는 경우에만 옴.
 					""")
-	@ApiResponses({ @ApiResponse(responseCode = "200", description = "추천 생성 성공",
-			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "성공", value = """
-					{
-					  "isSuccess": true,
-					  "code": "200",
-					  "message": "OK",
-					  "result": {
-					    "recommendationId": 3,
-					    "results": [
-					      {
-					        "product": { "id": 1, "name": "Tracy 비세토스 크로스바디", "price": 890000, "color": "블랙" },
-					        "reasonType": "PERSONAL",
-					        "reason": "블랙 계열을 좋아하신다고 하셔서 골랐어요"
-					      }
-					    ]
-					  }
-					}
-					"""))),
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "추천 생성 성공",
+					content = @Content(mediaType = "application/json",
+							examples = @ExampleObject(name = "성공",
+									value = """
+											{
+											  "isSuccess": true,
+											  "code": "200",
+											  "message": "OK",
+											  "result": {
+											    "recommendationId": 3,
+											    "results": [
+											      {
+											        "product": { "id": 1, "name": "Tracy 비세토스 크로스바디", "price": 890000, "color": "블랙", "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default" },
+											        "reasonType": "PERSONAL",
+											        "reason": "블랙 계열을 좋아하신다고 하셔서 골랐어요"
+											      }
+											    ]
+											  }
+											}
+											"""))),
 			@ApiResponse(responseCode = "400", description = "`REC400_1` 예산 역전, `REC400_4` `relation`이 4종 밖이거나 예산이 음수",
 					content = @Content(mediaType = "application/json",
 							examples = {
