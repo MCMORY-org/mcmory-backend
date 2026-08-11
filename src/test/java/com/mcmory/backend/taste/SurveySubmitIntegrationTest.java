@@ -44,6 +44,8 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 		assertThat(view.status()).as(view.text()).isEqualTo(200);
 		assertThat(view.body().get("friendName").asString()).isEqualTo("설문친구");
 		assertThat(view.body().get("answered").asBoolean()).isFalse();
+		// 발송자 실명("테스터")이 새면 안 됨. 지금은 더미이고 표시명 규칙은 미결임(AnonNicknameProvider)
+		assertThat(view.body().get("senderName").asString()).isEqualTo("멋쟁이사자");
 
 		var submitted = post("/api/v1/s/" + token,
 				"{\"privacyAgreed\":true,\"colors\":[\"블랙\"],\"styles\":[\"미니멀\"],\"bags\":[\"크로스바디\"]}");
