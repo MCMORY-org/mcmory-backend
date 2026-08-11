@@ -11,6 +11,8 @@ import com.mcmory.backend.member.Member;
 import com.mcmory.backend.consent.ConsentService;
 import com.mcmory.backend.member.MemberRepository;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -52,10 +54,27 @@ public class AuthService {
 	}
 
 	/** 재발급 결과임. rotated가 false면 유예 경로이고 refreshToken은 null임(Set-Cookie를 보내지 않아야 함). */
-	public record Reissued(String accessToken, String refreshToken, boolean rotated) {
+	public record Reissued(
+			@Schema(description = "새로 발급한 액세스 토큰(JWT)임. 컨트롤러가 `mcmory_at` 쿠키로 심으므로 " + "응답 본문으로는 나가지 않음(ADR-013 결정 2)",
+					requiredMode = Schema.RequiredMode.REQUIRED) String accessToken,
+			@Schema(description = "회전된 리프레시 토큰임. 컨트롤러가 `mcmory_rt` 쿠키로 심음. "
+					+ "함정: **유예 경로(`rotated`가 false)에서는 null**이고 그때는 `Set-Cookie`를 보내지 않아야 함 — "
+					+ "이긴 요청이 심은 쿠키를 덮으면 안 되기 때문임(ADR-013 결정 9의 6항)",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String refreshToken,
+			@Schema(description = "회전 여부임. true면 회전이 일어나 쿠키 2종을 새로 심고, "
+					+ "false면 30초 유예창 안으로 들어온 경합 패배 요청이라 액세스 토큰만 재발급함. "
+					+ "응답 `result.rotated`가 이 값이며 **`Set-Cookie` 부재를 실패로 다루면 안 됨**", example = "true",
+					requiredMode = Schema.RequiredMode.REQUIRED) boolean rotated) {
 	}
 
-	public record LoggedIn(Member member, String accessToken, String refreshToken) {
+	public record LoggedIn(
+			@Schema(description = "로그인 또는 가입된 회원임. 컨트롤러는 여기서 `id`와 `name`만 뽑아 응답 `result`로 내보냄",
+					requiredMode = Schema.RequiredMode.REQUIRED) Member member,
+			@Schema(description = "액세스 토큰(JWT)임. `mcmory_at` HttpOnly 쿠키로 나가며 응답 본문에는 담기지 않음",
+					requiredMode = Schema.RequiredMode.REQUIRED) String accessToken,
+			@Schema(description = "리프레시 토큰임. `mcmory_rt` HttpOnly 쿠키로 나감. "
+					+ "로그인마다 행을 추가해 앞 기기 세션이 끊기지 않음(ADR-013 결정 11)",
+					requiredMode = Schema.RequiredMode.REQUIRED) String refreshToken) {
 	}
 
 	@Transactional

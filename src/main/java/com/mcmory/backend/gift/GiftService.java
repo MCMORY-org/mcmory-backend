@@ -25,6 +25,7 @@ import com.mcmory.backend.product.Product;
 import com.mcmory.backend.product.ProductRepository;
 import com.mcmory.backend.recommend.RecommendService;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,7 +74,11 @@ public class GiftService {
 		this.members = members;
 	}
 
-	public record Sent(String token, String nickname) {
+	public record Sent(
+			@Schema(description = "초대 토큰임. 이 값으로 `/g/{token}` 초대 URL을 만들어 수신자에게 전달함(FR-014)",
+					example = "k3n8pq2wz7ta5vh0jr4bmx91") String token,
+			@Schema(description = "수신자에게 보일 발송자의 익명 닉네임임(ADR-001). 발송자 실명은 주지 않음",
+					example = "다정한 호저") String nickname) {
 	}
 
 	/**
@@ -83,8 +88,26 @@ public class GiftService {
 	 * letterBody 키 자체가 없어야 한다는 것이 프로토타입 계약이고 스모크가 그것을 봄.
 	 */
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	public record InviteView(boolean needConsent, String nickname, String letterBody, List<String> letterImageUrls,
-			String letterColor, ProductView product, LocalDateTime openedAt) {
+	public record InviteView(
+			@Schema(description = "동의가 아직 필요한지임. `true`면 닉네임만 오고 아래 본문·상품 키가 통째로 없음. "
+					+ "`false`로 바꾸려면 #13 `POST /api/v1/g/{token}` 동의를 먼저 거쳐야 함(FR-015)",
+					example = "true") boolean needConsent,
+			@Schema(description = "발송자의 익명 닉네임임(ADR-001). 동의 전후 모두 옴", example = "다정한 호저") String nickname,
+			@Schema(description = "편지 본문임. **동의 전에는 키 자체가 없음**(FR-015). 1자 이상 200자 이하로 저장된 값임",
+					example = "생일 축하해. 늘 고마워", nullable = true) String letterBody,
+			@Schema(description = "편지에 붙은 사진 URL 목록임. 사진을 넣어 보냈을 때만 붙고 **없으면 키 자체가 없음**. "
+					+ "최대 5개이고 전부 `/letter-images/`로 시작함",
+					example = "[\"/letter-images/8f0c1d2e111122223333444455556666.jpg\"]",
+					nullable = true) List<String> letterImageUrls,
+			@Schema(description = "편지지 **배경색 토큰**임(글자색이 아니므로 대비는 화면이 배경 명도로 판단함). "
+					+ "발송자가 색을 골랐을 때만 붙고 **없으면 키 자체가 없음**. 취향 색상 6종과는 다른 축임", example = "GOLD",
+					allowableValues = {
+							"GOLD", "BLACK", "BEIGE", "PINK" },
+					nullable = true) String letterColor,
+			@Schema(description = "선물로 보낸 상품임. **동의 전에는 키 자체가 없고**, 연결된 상품이 없으면 동의 후에도 없음",
+					nullable = true) ProductView product,
+			@Schema(description = "최초 열람 시각임. 동의와 열람(#13) 전에는 키 자체가 없고 **재방문해도 갈아치우지 않음**(FR-016)",
+					example = "2026-08-11T13:05:00", nullable = true) LocalDateTime openedAt){
 	}
 
 	/**
@@ -106,10 +129,18 @@ public class GiftService {
 		return color;
 	}
 
-	public record ProductView(String name, String emoji, int price) {
+	public record ProductView(
+			@Schema(description = "상품 이름임. 스냅샷이 아니라 현재 값이라 상품이 바뀌면 바뀐 값이 보임", example = "숄더백") String name,
+			@Schema(description = "상품을 대표하는 이모지임. 상품 이미지 대신 화면에 그리는 값임", example = "👜") String emoji,
+			@Schema(description = "상품 가격임. 이름과 마찬가지로 스냅샷이 아니라 현재 값임. 값이 없는 상품은 `0`으로 내려감. "
+					+ "**단위는 원임** — 추천 요청의 예산(만원 단위)과 다르므로 그대로 비교하지 말 것", example = "890000") int price) {
 	}
 
-	public record OwnedFromGift(Long id, String source, ProductView product) {
+	public record OwnedFromGift(
+			@Schema(description = "생성되었거나 이미 있던 보유 제품 id임. 재호출해도 새 행을 만들지 않고 같은 id를 줌(멱등)", example = "1") Long id,
+			@Schema(description = "보유 제품의 등록 경로임. 이 API로 만든 행은 `GIFT` 고정임(데모 시리얼 등록과 구분하는 값임)",
+					example = "GIFT") String source,
+			@Schema(description = "등록된 상품임. 상품은 초대 토큰이 이미 정하므로 요청이 상품을 다시 지정하지 않음") ProductView product) {
 	}
 
 	/**
@@ -146,7 +177,13 @@ public class GiftService {
 	/** FR-018 문의 사유임. ADR-007 결정 2의 고정 4종. */
 	private static final List<String> CHANGE_REASONS = List.of("SIZE", "COLOR", "ALREADY_OWNED", "ETC");
 
-	public record ChangeRequested(String reason, String officialUrl) {
+	public record ChangeRequested(
+			@Schema(description = "접수된 문의 사유임. 요청값을 앞뒤 공백 제거와 대문자화까지 마친 정규화 결과라 "
+					+ "소문자로 보내도 대문자로 돌아옴. 발송자에게는 알림 `type`이 `CHANGE_REQ_SIZE` 형태로 감", example = "SIZE",
+					allowableValues = {
+							"SIZE", "COLOR", "ALREADY_OWNED", "ETC" }) String reason,
+			@Schema(description = "수신자에게 함께 주는 공식몰 링크임(ADR-007 경로 2). " + "연결된 상품이 없거나 상품에 링크가 없으면 값이 없음",
+					nullable = true) String officialUrl){
 	}
 
 	/**
