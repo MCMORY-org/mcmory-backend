@@ -76,7 +76,6 @@ public class RecommendService {
 			@Schema(description = "시드 카탈로그 상품 id", example = "1", requiredMode = Schema.RequiredMode.REQUIRED) Long id,
 			@Schema(description = "상품명. 스냅샷 재조회에서도 **현재 값임** — 동결 대상이 아님", example = "Tracy 비세토스 크로스바디",
 					requiredMode = Schema.RequiredMode.REQUIRED) String name,
-			@Schema(description = "상품 이모지", example = "👜", requiredMode = Schema.RequiredMode.REQUIRED) String emoji,
 			@Schema(description = "가격. **단위는 원임** — 요청 예산의 만원 단위와 다름. 값이 없으면 `0`임. 스냅샷에서도 현재 값임", example = "890000",
 					requiredMode = Schema.RequiredMode.REQUIRED) int price,
 			@Schema(description = "상품 색상. **취향 색상 6종·편지지 색 4종과 다른 축임** — 시드에 카키·브라운이 있어 6종 밖임. 삭제된 상품이면 `null`임",
@@ -310,10 +309,8 @@ public class RecommendService {
 			Scored item = scored.get(rank);
 			boolean personal = (rank == 0) && item.score() > 0;
 
-			results.add(new Result(
-					new ProductView(item.product().getId(), item.product().getName(), item.product().emoji(),
-							(item.product().getPrice() == null) ? 0 : item.product().getPrice(),
-							item.product().getColor()),
+			results.add(new Result(new ProductView(item.product().getId(), item.product().getName(),
+					(item.product().getPrice() == null) ? 0 : item.product().getPrice(), item.product().getColor()),
 					personal ? "PERSONAL" : "GENERAL",
 					personal ? personalReason(item, relation, preferredTag) : "모델이 함께 매치한 제품이에요"));
 		}
@@ -346,9 +343,9 @@ public class RecommendService {
 		// FK가 RESTRICT라 상품이 사라질 수 없음. 그래도 조회 실패를 예외로 올리지 않고 표시용 기본값을 주는 이유는
 		// 재조회가 과거 기록 열람이고 여기서 500을 내면 편지함 화면 전체가 죽기 때문임
 		return this.products.findById(productId)
-			.map((product) -> new ProductView(product.getId(), product.getName(), product.emoji(),
+			.map((product) -> new ProductView(product.getId(), product.getName(),
 					(product.getPrice() == null) ? 0 : product.getPrice(), product.getColor()))
-			.orElseGet(() -> new ProductView(productId, "삭제된 상품", "🎁", 0, null));
+			.orElseGet(() -> new ProductView(productId, "삭제된 상품", 0, null));
 	}
 
 	private String toContextJson(String relation, int minBudget, int maxBudget, Long friendId) {

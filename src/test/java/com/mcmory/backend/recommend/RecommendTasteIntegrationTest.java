@@ -71,6 +71,19 @@ class RecommendTasteIntegrationTest extends HttpIntegrationSupport {
 		assertThat(first.get("product").get("color").asString()).as("본인 답변이 덮였음: " + response.text()).isEqualTo("블랙");
 	}
 
+	/**
+	 * 프론트가 `productId → /products/{id}.webp`로 이미지를 고르므로 id가 계약에서 사라지면 화면이 빈다. 이모지는 사진이 없던
+	 * 시절의 자리표시자라 실물 사진 사이에 섞이면 폴백이 아니라 깨진 화면임(F29).
+	 */
+	@Test
+	void 추천_상품은_id를_주고_emoji를_주지_않는다() {
+		var response = post("/api/v1/recommend", "{\"relation\":\"친구\"," + DEFAULT_BUDGET + "}");
+
+		var product = response.body().get("results").get(0).get("product");
+		assertThat(product.get("id").asLong()).isPositive();
+		assertThat(product.has("emoji")).as(response.text()).isFalse();
+	}
+
 	@Test
 	void 남의_친구_취향은_읽지_못하고_404가_난다() {
 		clearCookies();
