@@ -273,6 +273,37 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 		assertThat(after.body().get("letterColor").asString()).isEqualTo("BEIGE");
 	}
 
+	/**
+	 * FIX-W004 ①: 번호 없는 친구에게 보낸 선물은 발송 시점 전화번호 매칭이 없어 `recipientMemberId`가 비어 있음. 수신자가
+	 * 실제로 열고 등록하면 그때 귀속해야 받은 편지함이 참. 등록이 유일한 인증 지점임(동의와 열람은 비인증 토큰 경로).
+	 */
+	@Test
+	void 번호_없는_친구의_선물도_등록하면_받은_편지함에_잡힌다() {
+		long productId = 상품_id();
+		Response sent = post("/api/v1/gift",
+				"{\"productId\":" + productId + ",\"letterBody\":\"검증용 편지\",\"friendName\":\"번호없는친구\"}");
+		assertThat(sent.status()).as(sent.text()).isEqualTo(200);
+		String token = sent.body().get("token").asString();
+		String nickname = sent.body().get("nickname").asString();
+
+		clearCookies();
+		loginAs(RECIPIENT_PHONE, PASSWORD);
+
+		// 등록 전에는 수신함에 없음 — 발송 시점에 귀속될 근거가 없었음
+		assertThat(nicknamesOf(get("/api/v1/letters"))).doesNotContain(nickname);
+
+		post("/api/v1/g/" + token, null);
+		assertThat(post("/api/v1/g/" + token + "/owned", null).status()).isEqualTo(200);
+
+		assertThat(nicknamesOf(get("/api/v1/letters"))).as("등록했는데 받은 편지함이 비어 있음").contains(nickname);
+	}
+
+	private java.util.List<String> nicknamesOf(Response letters) {
+		java.util.List<String> nicknames = new java.util.ArrayList<>();
+		letters.body().get("received").forEach((item) -> nicknames.add(item.get("nickname").asString()));
+		return nicknames;
+	}
+
 	/** 보유 제품의 상품 표시 계약임(F29). 프론트가 `productId`로 이미지를 고르므로 id가 빠지면 화면이 빔. */
 	@Test
 	void 보유_등록과_목록은_productId를_주고_emoji를_주지_않는다() {

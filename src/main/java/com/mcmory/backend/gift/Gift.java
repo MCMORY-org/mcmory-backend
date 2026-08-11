@@ -112,6 +112,18 @@ public class Gift {
 		this.status = "OPENED";
 	}
 
+	/**
+	 * 수신자를 뒤늦게 귀속함. 발송 시점 전화번호 매칭이 실패한 선물(번호 없는 친구)은 수신자가 실제로 열고 등록할 때가 유일한 인증 지점임 —
+	 * 그전까지는 받은 편지함이 영영 비어 있음.
+	 *
+	 * 이미 다른 회원이 지정된 선물은 호출부가 앞서 막으므로 여기서 덮어쓰지 않음.
+	 */
+	public void claimRecipient(Long memberId) {
+		if (this.recipientMemberId == null) {
+			this.recipientMemberId = memberId;
+		}
+	}
+
 	/** FR-018: 선물당 1회임. 이 시각이 채워져 있으면 이미 문의한 것. */
 	public void requestChange() {
 		this.changeRequestedAt = LocalDateTime.now();
