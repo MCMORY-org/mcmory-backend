@@ -223,10 +223,17 @@ public class FriendController {
 				Map.of("id", updated.getId(), "name", updated.getName(), "phone", updated.getPhone())));
 	}
 
+	@Schema(name = "FriendSurveyRequest",
+			description = "`HOME-02` 질문 선별 요청임(명세서 5.5 #33, FEAT-W003). **본문 전체가 선택임** — 안 보내면 저장된 선택을 그대로 두고 링크만 발급함")
+	public record SurveyRequest(@Schema(
+			description = "수신자에게 물어볼 축임. 허용값 셋은 `colors`·`styles`·`bags`이고 순서는 무시함. **빈 배열은 생략과 다르게 `FRIEND400_4`임** — 생략은 저장값 유지이고 빈 배열은 축을 하나도 안 켠 것임. `colors`와 `styles`를 둘 다 끄는 것과 허용값 밖의 축도 같은 코드임(가방만으로는 추천이 안 바뀜). 저장된 적이 없는 친구는 세 축 전부임",
+			example = "[\"colors\",\"styles\"]", requiredMode = Schema.RequiredMode.NOT_REQUIRED) List<String> axes) {
+	}
+
 	/** `Start-02` 설문 링크 발급임. 오리진은 서버가 모르므로 `path`만 주고 앞자리는 화면이 붙임. */
 	@Operation(summary = "수신자 설문 링크 발급",
-			description = "`Start-02` 설문 토큰을 멱등으로 발급함(명세서 5.5 #33과 5.5-1). 인증 필수이고 남의 친구도 FRIEND404_1임. **오리진은 서버가 모르므로 `path`만 주고 앞자리는 화면이 붙임.** 발급한 링크를 발송자가 문자로 보내면 수신자가 비회원 경로(`GET`과 `POST /api/v1/s/{token}`)에서 동의하고 취향에 답함")
-	@ApiResponse(responseCode = "200", description = "발급 성공. `token`은 24자이고 `path`는 `/s/{token}`임",
+			description = "`Start-02` 설문 토큰을 멱등으로 발급함(명세서 5.5 #33과 5.5-1). 인증 필수이고 남의 친구도 FRIEND404_1임. **오리진은 서버가 모르므로 `path`만 주고 앞자리는 화면이 붙임.** 발급한 링크를 발송자가 문자로 보내면 수신자가 비회원 경로(`GET`과 `POST /api/v1/s/{token}`)에서 동의하고 취향에 답함.\n\n**`axes`는 `HOME-02` 질문 선별임(FEAT-W003).** 켠 축만 `GET /api/v1/s/{token}`이 돌려주고 그 밖의 축에 답하면 제출이 `FRIEND400_4`로 막힘. **토큰은 멱등이고 `axes`는 보낸 호출에서만 덮어씀** — 토글을 고쳐 다시 저장하는 것이 정상 경로이고 이미 보낸 링크는 살아 있어야 함. 축을 안 보낸 호출은 저장값을 유지함")
+	@ApiResponse(responseCode = "200", description = "발급 성공. `token`은 24자이고 `path`는 `/s/{token}`이며 `axes`는 저장된 질문 선별임",
 			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "성공", value = """
 					{
 					  "isSuccess": true,
@@ -234,9 +241,19 @@ public class FriendController {
 					  "message": "OK",
 					  "result": {
 					    "token": "abcdefghijklmnopqrstuvwx",
-					    "path": "/s/abcdefghijklmnopqrstuvwx"
+					    "path": "/s/abcdefghijklmnopqrstuvwx",
+					    "axes": ["colors", "styles"]
 					  }
 					}""")))
+	@ApiResponse(responseCode = "400", description = "`FRIEND400_4` — 허용값 밖의 축이거나 빈 배열이거나 `colors`와 `styles`를 둘 다 끔",
+			content = @Content(mediaType = "application/json",
+					examples = @ExampleObject(name = "FRIEND400_4", value = """
+							{
+							  "isSuccess": false,
+							  "code": "FRIEND400_4",
+							  "message": "취향을 하나 이상 선택해주세요",
+							  "result": null
+							}""")))
 	@ApiResponse(responseCode = "404", description = "친구 정보를 찾을 수 없음(없는 친구, 삭제된 친구, 남의 친구 모두 같은 코드임)",
 			content = @Content(mediaType = "application/json",
 					examples = @ExampleObject(name = "FRIEND404_1", value = """
@@ -247,9 +264,11 @@ public class FriendController {
 							  "result": null
 							}""")))
 	@PostMapping("/{id}/survey")
-	public CustomResponse<Map<String, Object>> issueSurveyLink(@PathVariable Long id) {
-		String token = this.friends.issueSurveyToken(this.currentMember.requireId(), id);
-		return CustomResponse.ok(Map.of("token", token, "path", "/s/" + token));
+	public CustomResponse<Map<String, Object>> issueSurveyLink(@PathVariable Long id,
+			@RequestBody(required = false) SurveyRequest request) {
+		var link = this.friends.issueSurveyToken(this.currentMember.requireId(), id,
+				(request == null) ? null : request.axes());
+		return CustomResponse.ok(Map.of("token", link.token(), "path", "/s/" + link.token(), "axes", link.axes()));
 	}
 
 	/**

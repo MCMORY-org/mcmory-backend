@@ -35,6 +35,14 @@ public class Friend {
 	@Column(name = "survey_token", length = 24, unique = true)
 	private String surveyToken;
 
+	/**
+	 * FEAT-W003 `HOME-02` 질문 선별임. 켠 축을 `colors,styles,bags` 형태로 조인해 둠.
+	 *
+	 * **NULL은 세 축 전부임** — 발급 전 행과 FEAT-W003 이전에 만들어진 행이 그대로 동작해야 함.
+	 */
+	@Column(name = "survey_axes", length = 32)
+	private String surveyAxes;
+
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime createdAt;
 
@@ -73,6 +81,16 @@ public class Friend {
 			this.surveyToken = candidate;
 		}
 		return this.surveyToken;
+	}
+
+	/** 질문 선별 저장임. 토큰과 달리 덮어쓰는 것이 정상 경로임 — 왜는 {@link FriendService#issueSurveyToken}. */
+	public void selectSurveyAxes(String axes) {
+		this.surveyAxes = axes;
+	}
+
+	/** 원문 반환임. 해석은 {@link com.mcmory.backend.taste.SurveyAxes#parse}. */
+	public String getSurveyAxes() {
+		return this.surveyAxes;
 	}
 
 	/** 화면에 보일 이름임. 파기된 친구는 컬럼이 NULL이라 표시 시점에 문구로 바꿈. */

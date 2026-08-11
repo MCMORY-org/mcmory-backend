@@ -61,7 +61,11 @@ public class SurveyService {
 			@Schema(description = "설문 대상 수신자 이름임. 발송자가 친구로 등록할 때 넣은 값이고 1자 이상 20자 이하임", example = "김민지",
 					requiredMode = Schema.RequiredMode.REQUIRED) String friendName,
 			@Schema(description = "이미 답한 설문인지임. `true`여도 재제출은 덮어쓰기라 차단하지 않음" + "(ADR-009 결정 1의 친구당 1행). 화면 안내 문구 분기용임",
-					example = "false", requiredMode = Schema.RequiredMode.REQUIRED) boolean answered) {
+					example = "false", requiredMode = Schema.RequiredMode.REQUIRED) boolean answered,
+			@Schema(description = "발송자가 `HOME-02`에서 켠 축임(FEAT-W003). 값은 `colors`·`styles`·`bags` 중 하나 이상이고 순서는 화면 카드 순서임. "
+					+ "**여기 없는 축은 그리지 말 것** — 답을 담아 보내면 제출이 `FRIEND400_4`로 막힘. 토글을 저장한 적이 없는 친구는 세 축 전부가 옴",
+					example = "[\"colors\",\"styles\"]",
+					requiredMode = Schema.RequiredMode.REQUIRED) List<String> axes) {
 	}
 
 	@Transactional(readOnly = true)
@@ -75,7 +79,8 @@ public class SurveyService {
 			.map(TasteProfile::isFromInvite)
 			.orElse(false);
 
-		return new SurveyView(senderName, friend.displayName(), answered);
+		// FEAT-W003: 발송자가 켠 축만 화면이 그림
+		return new SurveyView(senderName, friend.displayName(), answered, SurveyAxes.parse(friend.getSurveyAxes()));
 	}
 
 	/**
@@ -94,9 +99,11 @@ public class SurveyService {
 			throw new CustomException(FriendErrorCode.PRIVACY_REQUIRED);
 		}
 
-		List<String> pickedColors = validated(colors, COLORS);
-		List<String> pickedStyles = validated(styles, STYLES);
-		List<String> pickedBags = validated(bags, BAGS);
+		// FEAT-W003: 발송자가 끈 축에 답이 오면 막음. 조용히 버리면 수신자가 고른 것이 사라진 채 200이 나감
+		List<String> enabled = SurveyAxes.parse(friend.getSurveyAxes());
+		List<String> pickedColors = onEnabledAxis(enabled, SurveyAxes.COLORS, validated(colors, COLORS));
+		List<String> pickedStyles = onEnabledAxis(enabled, SurveyAxes.STYLES, validated(styles, STYLES));
+		List<String> pickedBags = onEnabledAxis(enabled, SurveyAxes.BAGS, validated(bags, BAGS));
 
 		// 점수에 쓰는 두 축 중 하나는 있어야 함. 가방만 고르면 답변은 있는데 추천이 그대로임
 		if (pickedColors.isEmpty() && pickedStyles.isEmpty()) {
@@ -117,6 +124,14 @@ public class SurveyService {
 		Optional<Friend> found = forUpdate ? this.friends.findBySurveyTokenForUpdate(surveyToken)
 				: this.friends.findBySurveyTokenAndDeletedAtIsNull(surveyToken);
 		return found.orElseThrow(() -> new CustomException(FriendErrorCode.NOT_FOUND));
+	}
+
+	/** 끈 축에 온 답을 막음(FEAT-W003). 화면 버그와 직접 호출 둘 다 여기서 걸림 — 비인증 경로라 신뢰 경계임. */
+	private List<String> onEnabledAxis(List<String> enabled, String axis, List<String> picked) {
+		if (!picked.isEmpty() && !enabled.contains(axis)) {
+			throw new CustomException(FriendErrorCode.INVALID_ANSWER);
+		}
+		return picked;
 	}
 
 	/** 선택지 밖 값은 버리지 않고 막음 — 버리면 고른 것이 사라진 채 200이 나감. */

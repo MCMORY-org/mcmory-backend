@@ -50,6 +50,7 @@ CREATE TABLE friend (
   name            VARCHAR(20) NULL,                     -- 삭제 즉시 NULL 파기(ADR-003)
   phone           VARCHAR(11) NULL,
   survey_token    VARCHAR(24) NULL UNIQUE,              -- Start-02 설문 링크. 발급 전에는 NULL(FEAT-W001)
+  survey_axes     VARCHAR(32) NULL,                     -- HOME-02 질문 선별. colors,styles,bags 조인. NULL은 세 축 전부(FEAT-W003)
   created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at      DATETIME    NULL,
   CONSTRAINT fk_friend_owner FOREIGN KEY (owner_member_id) REFERENCES member(id),
