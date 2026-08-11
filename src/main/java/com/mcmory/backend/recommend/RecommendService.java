@@ -297,9 +297,15 @@ public class RecommendService {
 			throw new CustomException(RecommendErrorCode.BUDGET_INVERTED);
 		}
 
-		List<Product> inBudget = this.products.findByPriceBetweenOrderById(minBudget, maxBudget);
+		// 선물 적격만 남김. 시드의 코디용 의류는 FR-023 스타일링 제안 대상이지 선물 대상이 아님 —
+		// 안 거르면 "친구에게 슬랙스를 선물하세요"가 나감. **두 갈래를 다 걸러야 함**: 예산 필터와 아래 전체 폴백
+		List<Product> inBudget = this.products.findByPriceBetweenOrderById(minBudget, maxBudget)
+			.stream()
+			.filter(Product::isGiftEligible)
+			.toList();
 		// 예산에 맞는 것이 없으면 빈 화면을 주지 않고 전체에서 고름 — 시연 중 결과 0건을 피함
-		List<Product> pool = inBudget.isEmpty() ? this.products.findAllByOrderById() : inBudget;
+		List<Product> pool = inBudget.isEmpty()
+				? this.products.findAllByOrderById().stream().filter(Product::isGiftEligible).toList() : inBudget;
 
 		String preferredTag = RELATION_TAG.get(relation);
 

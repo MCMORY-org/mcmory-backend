@@ -45,6 +45,23 @@ app:
     # 이 경로를 받아야 재배포에도 살아남는다. 파일이 더 오래 살아야 하면 오브젝트 스토리지로 옮긴다
     dir: ${LETTER_IMAGES_DIR:./var/letter-images}
 
+# FR-023 스타일링 근거 문구를 AWS Bedrock으로 쓸지다(FEAT-W002).
+#
+# **기본값이 false다.** 꺼져 있으면 Bedrock 빈이 아예 안 만들어지고 규칙 문구로 폴백하므로,
+# 로컬과 테스트는 외부 호출이 0건이고 결과가 결정론적이다. 켜려면 자격증명이 필요한데
+# 키를 넣지 않고 EC2 IAM 인스턴스 프로파일로 준다(컨테이너에서 닿으려면 IMDSv2 hop limit이 2여야 한다).
+#
+# model-id는 **추론 프로파일 id**여야 한다 — 맨 id(amazon.nova-pro-v1:0)는 ValidationException이다.
+#
+# **nova-lite를 쓰지 말 것.** 2026-08-11 실측에서 lite는 길이 지시를 못 지켜 41에서 63자를 냈고,
+# 40자 검증에 전부 걸려 LLM이 실질적으로 한 번도 쓰이지 않았다. pro는 같은 프롬프트에 25·38·33자였다.
+bedrock:
+  enabled: ${BEDROCK_ENABLED:false}
+  region: ${BEDROCK_REGION:ap-northeast-2}
+  model-id: ${BEDROCK_MODEL_ID:apac.amazon.nova-pro-v1:0}
+  # 재시도를 포함한 총량이다. 넘으면 규칙 문구로 폴백하므로 사용자 체감 상한도 이 값이다
+  timeout-millis: ${BEDROCK_TIMEOUT_MILLIS:2500}
+
 management:
   endpoints:
     web:
