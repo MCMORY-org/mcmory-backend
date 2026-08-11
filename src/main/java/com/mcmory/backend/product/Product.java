@@ -79,9 +79,4 @@ public class Product {
 		return this.styleTags;
 	}
 
-	/** 프로토타입은 이미지 대신 이모지임. 없으면 선물 상자로 대체함. */
-	public String emoji() {
-		return (this.imageUrl == null) ? "🎁" : this.imageUrl;
-	}
-
 }

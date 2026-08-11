@@ -245,7 +245,7 @@ public class GiftController {
 
 					`GIFT404_1`은 없는 토큰과 **다른 회원에게 지정된 선물**을 함께 덮음 — 존재 여부를 알려주지 않으려고 같은 코드를 씀.
 
-					응답 `result`: `{ "id", "source": "GIFT", "product": { "name", "emoji", "price" } }`.""")
+					응답 `result`: `{ "id", "source": "GIFT", "product": { "productId", "name", "price" } }`.""")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "등록 성공. 재호출해도 같은 결과를 반환함",
 					content = @Content(examples = @ExampleObject(name = "성공",
@@ -254,7 +254,7 @@ public class GiftController {
 									  "isSuccess": true,
 									  "code": "200",
 									  "message": "OK",
-									  "result": { "id": 1, "source": "GIFT", "product": { "name": "...", "emoji": "...", "price": 0 } }
+									  "result": { "id": 1, "source": "GIFT", "product": { "productId": 1, "name": "...", "price": 0 } }
 									}"""))),
 			@ApiResponse(responseCode = "400",
 					description = "`GIFT400_3` 선물을 먼저 열어주세요(아직 열지 않음) / `GIFT400_1` 상품을 찾을 수 없습니다(연결된 상품 없음)",
