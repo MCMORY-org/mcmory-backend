@@ -270,6 +270,13 @@ public class GiftService {
 		Product product = this.products.findById(productId)
 			.orElseThrow(() -> new CustomException(GiftErrorCode.PRODUCT_NOT_FOUND));
 
+		// 추천만 막으면 뚫림 — recommendationId가 선택 필드라 없으면 여기가 유일한 문지기임.
+		// 코디용 의류 id를 직접 실으면 발송과 열람과 보유 등록까지 그대로 감.
+		// 없는 상품과 같은 코드를 씀 — 어느 id가 선물 가능한지 훑게 하지 않기 위함임
+		if (!product.isGiftEligible()) {
+			throw new CustomException(GiftErrorCode.PRODUCT_NOT_FOUND);
+		}
+
 		String letterBody = (rawLetterBody == null) ? "" : rawLetterBody.trim();
 		// ADR-008: 편지 본문 1자 이상 200자 이하. v1.0 디자인 14는 500자였는데 v1.1 Unwrap-01이 200자로
 		// 줄여 새 버전에 맞춤(screen-inventory 0.3). 화면 표기가 `78/200자`라 사용자가 보는 숫자와 서버 한도가 같아야 함
