@@ -13,6 +13,7 @@ import com.mcmory.backend.styling.StylingService;
 
 import com.mcmory.backend.global.apiPayload.CustomResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -285,32 +287,56 @@ public class OwnedProductController {
 
 					함정 2: **`reasonSource`가 `LLM`일 때만 AI라고 표기할 것.** 모델 호출이 실패하거나 느리거나 꺼져 있으면 규칙 문구로 조용히 폴백하고 그 값이 `RULE`이 됨. 폴백 화면에 AI 단정 문구를 그대로 두면 허위임.
 
+					함정 2-1: **기본 호출은 모델을 아예 부르지 않아 언제나 `RULE`임.** AI 문구가 필요하면 `?aiReason=true`를 붙일 것 — 실측으로 54ms와 739ms 차이라 화면이 문구를 안 쓰면 순수 낭비임. **옵트인해도 폴백되면 정상 200**이고 실패가 아님.
+
 					함정 3: 첫 항목만 `PERSONAL`이고 나머지는 고정 `GENERAL` 문구임(ADR-009). 모델 호출도 그래서 요청당 1회임.
 
 					함정 4: 없는 id, 남의 제품, 삭제된 제품, **상품 연결이 끊긴 제품**을 모두 `OWNED404_2`로 응답함 — 관리 방법(#32)과 같은 계약임.""")
-	@ApiResponses({ @ApiResponse(responseCode = "200", description = "추천 반환",
-			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "성공", value = """
-					{
-					  "isSuccess": true,
-					  "code": "200",
-					  "message": "OK",
-					  "result": {
-					    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품" },
-					    "reasonSource": "LLM",
-					    "results": [
-					      {
-					        "productId": 13,
-					        "name": "로고 자카드 니트",
-					        "category": "WOMAN TOP",
-					        "price": 690000,
-					        "officialUrl": "https://kr.mcmworldwide.com",
-					        "reasonType": "PERSONAL",
-					        "reason": "평소 미니멀 스타일을 즐기시네요"
-					      }
-					    ]
-					  }
-					}
-					"""))),
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "추천 반환", content = @Content(mediaType = "application/json",
+					examples = { @ExampleObject(name = "기본 호출 — 모델을 부르지 않아 언제나 RULE", value = """
+							{
+							  "isSuccess": true,
+							  "code": "200",
+							  "message": "OK",
+							  "result": {
+							    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품" },
+							    "reasonSource": "RULE",
+							    "results": [
+							      {
+							        "productId": 13,
+							        "name": "로고 자카드 니트",
+							        "category": "WOMAN TOP",
+							        "price": 690000,
+							        "officialUrl": "https://kr.mcmworldwide.com",
+							        "reasonType": "PERSONAL",
+							        "reason": "평소 미니멀 스타일을 즐기시네요"
+							      }
+							    ]
+							  }
+							}
+							"""), @ExampleObject(name = "aiReason=true — 모델이 첫 문구를 씀", value = """
+							{
+							  "isSuccess": true,
+							  "code": "200",
+							  "message": "OK",
+							  "result": {
+							    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품" },
+							    "reasonSource": "LLM",
+							    "results": [
+							      {
+							        "productId": 13,
+							        "name": "로고 자카드 니트",
+							        "category": "WOMAN TOP",
+							        "price": 690000,
+							        "officialUrl": "https://kr.mcmworldwide.com",
+							        "reasonType": "PERSONAL",
+							        "reason": "미니멀 스타일에 로고 자카드 니트 어떠세요"
+							      }
+							    ]
+							  }
+							}
+							""") })),
 			@ApiResponse(responseCode = "401", description = "비로그인",
 					content = @Content(mediaType = "application/json",
 							examples = @ExampleObject(name = "AUTH401_1", value = """
@@ -321,8 +347,12 @@ public class OwnedProductController {
 							{ "isSuccess": false, "code": "OWNED404_2", "message": "제품 정보를 찾을 수 없습니다", "result": null }
 							"""))) })
 	@GetMapping("/{id}/styling")
-	public CustomResponse<StylingService.Result> styling(@PathVariable Long id) {
-		return CustomResponse.ok(this.styling.styling(this.currentMember.requireId(), id));
+	public CustomResponse<StylingService.Result> styling(@PathVariable Long id,
+			@Parameter(description = "첫 근거 문구를 AI가 쓸지임. **기본은 `false`이고 그때는 모델을 아예 부르지 않음**(실측 54ms 대 739ms). "
+					+ "`true`여도 서버에서 Bedrock이 꺼져 있거나 호출이 실패하면 규칙 문구가 나가고 `reasonSource`가 `RULE`이 됨 — **오류가 아님**. "
+					+ "**비용이 드는 호출이라 프리페치나 자동 재시도 대상이 아님**",
+					example = "true") @RequestParam(defaultValue = "false") boolean aiReason) {
+		return CustomResponse.ok(this.styling.styling(this.currentMember.requireId(), id, aiReason));
 	}
 
 	@Operation(summary = "보유 제품 삭제 (#21)",
