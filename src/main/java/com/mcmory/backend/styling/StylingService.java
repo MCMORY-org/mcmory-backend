@@ -61,7 +61,11 @@ public class StylingService {
 			@Schema(description = "상품명임", example = "미니 Aren 비세토스 카드 케이스",
 					requiredMode = Schema.RequiredMode.REQUIRED) String name,
 			@Schema(description = "상품 카테고리임", example = "가죽 소품",
-					requiredMode = Schema.RequiredMode.REQUIRED) String category) {
+					requiredMode = Schema.RequiredMode.REQUIRED) String category,
+			@Schema(description = "상품 이미지 URL임. **있으면 이 값을 그대로 쓰고, `null`이면 화면이 자체 규약(`/products/{id}.webp`)으로 고를 것.** "
+					+ "MCM 공식 CDN 주소라 우리 서버를 거치지 않음. 옛 시드 상품은 아직 `null`임",
+					example = "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String imageUrl) {
 	}
 
 	@Schema(name = "StylingSuggestion", description = "스타일링 추천 한 건임.")
@@ -74,6 +78,10 @@ public class StylingService {
 					requiredMode = Schema.RequiredMode.REQUIRED) String category,
 			@Schema(description = "가격임. **단위는 원임**. 값이 없는 상품은 `0`으로 내려감", example = "1250000",
 					requiredMode = Schema.RequiredMode.REQUIRED) int price,
+			@Schema(description = "상품 이미지 URL임. **있으면 이 값을 그대로 쓰고, `null`이면 화면이 자체 규약(`/products/{id}.webp`)으로 고를 것.** "
+					+ "MCM 공식 CDN 주소라 우리 서버를 거치지 않음. 옛 시드 상품은 아직 `null`임",
+					example = "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String imageUrl,
 			@Schema(description = "공식몰 링크임. `보러가기`가 새 탭으로 엶. 선택 — 상품에 링크가 없으면 `null`임",
 					example = "https://kr.mcmworldwide.com",
 					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String officialUrl,
@@ -134,8 +142,9 @@ public class StylingService {
 			Product product = picked.get(rank);
 			boolean personal = rank == 0;
 			results.add(new Suggestion(product.getId(), product.getName(), product.getCategory(),
-					(product.getPrice() == null) ? 0 : product.getPrice(), product.getOfficialUrl(),
-					personal ? "PERSONAL" : "GENERAL", personal ? personalReason : GENERAL_REASON));
+					(product.getPrice() == null) ? 0 : product.getPrice(), product.getImageUrl(),
+					product.getOfficialUrl(), personal ? "PERSONAL" : "GENERAL",
+					personal ? personalReason : GENERAL_REASON));
 		}
 
 		return new Result(viewOf(base), (written == null) ? "RULE" : "LLM", results);
@@ -183,7 +192,7 @@ public class StylingService {
 	}
 
 	private OwnedView viewOf(Product product) {
-		return new OwnedView(product.getId(), product.getName(), product.getCategory());
+		return new OwnedView(product.getId(), product.getName(), product.getCategory(), product.getImageUrl());
 	}
 
 	private int overlap(List<String> left, List<String> right) {

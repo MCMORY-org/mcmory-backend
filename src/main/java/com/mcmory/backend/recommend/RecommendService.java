@@ -79,7 +79,11 @@ public class RecommendService {
 			@Schema(description = "가격. **단위는 원임** — 요청 예산의 만원 단위와 다름. 값이 없으면 `0`임. 스냅샷에서도 현재 값임", example = "890000",
 					requiredMode = Schema.RequiredMode.REQUIRED) int price,
 			@Schema(description = "상품 색상. **취향 색상 6종·편지지 색 4종과 다른 축임** — 시드에 카키·브라운이 있어 6종 밖임. 삭제된 상품이면 `null`임",
-					example = "블랙", requiredMode = Schema.RequiredMode.NOT_REQUIRED) String color) {
+					example = "블랙", requiredMode = Schema.RequiredMode.NOT_REQUIRED) String color,
+			@Schema(description = "상품 이미지 URL임. **있으면 이 값을 그대로 쓰고, `null`이면 화면이 자체 규약(`/products/{id}.webp`)으로 고를 것.** "
+					+ "MCM 공식 CDN 주소라 우리 서버를 거치지 않음(2026-08-12 카탈로그 50건부터 채워짐). 옛 시드 상품은 아직 `null`임",
+					example = "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String imageUrl) {
 	}
 
 	public record Result(
@@ -324,8 +328,10 @@ public class RecommendService {
 			Scored item = scored.get(rank);
 			boolean personal = (rank == 0) && item.score() > 0;
 
-			results.add(new Result(new ProductView(item.product().getId(), item.product().getName(),
-					(item.product().getPrice() == null) ? 0 : item.product().getPrice(), item.product().getColor()),
+			results.add(new Result(
+					new ProductView(item.product().getId(), item.product().getName(),
+							(item.product().getPrice() == null) ? 0 : item.product().getPrice(),
+							item.product().getColor(), item.product().getImageUrl()),
 					personal ? "PERSONAL" : "GENERAL",
 					personal ? personalReason(item, relation, preferredTag) : "모델이 함께 매치한 제품이에요"));
 		}
@@ -359,8 +365,8 @@ public class RecommendService {
 		// 재조회가 과거 기록 열람이고 여기서 500을 내면 편지함 화면 전체가 죽기 때문임
 		return this.products.findById(productId)
 			.map((product) -> new ProductView(product.getId(), product.getName(),
-					(product.getPrice() == null) ? 0 : product.getPrice(), product.getColor()))
-			.orElseGet(() -> new ProductView(productId, "삭제된 상품", 0, null));
+					(product.getPrice() == null) ? 0 : product.getPrice(), product.getColor(), product.getImageUrl()))
+			.orElseGet(() -> new ProductView(productId, "삭제된 상품", 0, null, null));
 	}
 
 	private String toContextJson(String relation, int minBudget, int maxBudget, Long friendId) {
