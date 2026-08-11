@@ -12,16 +12,16 @@ SET NAMES utf8mb4;
 -- 스타일 태그가 추천 대역을 덮어야 개인화가 성립한다. 현재 대역: 클래식(1,2,7), 캐주얼(6,8),
 -- 러블리(8), 포멀(7). 상품을 늘릴 때 빈 태그가 생기면 그 취향은 전체 카탈로그 폴백으로 떨어진다.
 INSERT INTO product (id, name, category, color, price, image_url, official_url, style_tags, demo_serial) VALUES
-  (1, 'Tracy 비세토스 크로스바디', '가방', '블랙', 890000, '👜', 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀','클래식'), 'MX2024A031'),
-  (2, '비세토스 숄더백', '가방', '코냑', 750000, '👝', 'https://kr.mcmworldwide.com', JSON_ARRAY('클래식','미니멀'), 'MX2024B072'),
-  (3, '비세토스 오리지널 카드 반지갑', '지갑', '코냑', 290000, '💳', 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀'), 'MX2024C118'),
-  (4, '미니 Aren 비세토스 카드 케이스', '가죽 소품', '카키', 290000, '🪪', 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀'), 'MX2024D204'),
-  (5, 'Aren 브라스 플레이트 월렛', '지갑', '블랙', 380000, '👛', 'https://kr.mcmworldwide.com', JSON_ARRAY('클래식'), 'MX2024E317'),
-  (6, '비세토스 백팩', '가방', '브라운', 1150000, '🎒', 'https://kr.mcmworldwide.com', JSON_ARRAY('캐주얼','스트릿'), 'MX2024F440'),
-  (7, '비세토스 라우드 토트백', '가방', '베이지', 690000, '👜', 'https://kr.mcmworldwide.com', JSON_ARRAY('포멀','클래식'), 'MX2024G551'),
-  (8, '밀라 미니 크로스바디', '가방', '핑크', 620000, '👛', 'https://kr.mcmworldwide.com', JSON_ARRAY('러블리','캐주얼'), 'MX2024H663'),
-  (9, '비세토스 체인 월렛', '지갑', '골드', 450000, '💰', 'https://kr.mcmworldwide.com', JSON_ARRAY('러블리','포멀'), 'MX2024I774'),
-  (10, 'Aren 집업 파우치', '가죽 소품', '그레이', 320000, '🧳', 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀','스트릿'), 'MX2024J885');
+  (1, 'Tracy 비세토스 크로스바디', '가방', '블랙', 890000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀','클래식'), 'MX2024A031'),
+  (2, '비세토스 숄더백', '가방', '코냑', 750000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('클래식','미니멀'), 'MX2024B072'),
+  (3, '비세토스 오리지널 카드 반지갑', '지갑', '코냑', 290000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀'), 'MX2024C118'),
+  (4, '미니 Aren 비세토스 카드 케이스', '가죽 소품', '카키', 290000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀'), 'MX2024D204'),
+  (5, 'Aren 브라스 플레이트 월렛', '지갑', '블랙', 380000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('클래식'), 'MX2024E317'),
+  (6, '비세토스 백팩', '가방', '브라운', 1150000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('캐주얼','스트릿'), 'MX2024F440'),
+  (7, '비세토스 라우드 토트백', '가방', '베이지', 690000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('포멀','클래식'), 'MX2024G551'),
+  (8, '밀라 미니 크로스바디', '가방', '핑크', 620000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('러블리','캐주얼'), 'MX2024H663'),
+  (9, '비세토스 체인 월렛', '지갑', '골드', 450000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('러블리','포멀'), 'MX2024I774'),
+  (10, 'Aren 집업 파우치', '가죽 소품', '그레이', 320000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀','스트릿'), 'MX2024J885');
 
 INSERT INTO store (id, name, address, lat, lng, open_time, close_time, repair_available) VALUES
   (1, 'MCM 강남 본점', '서울 강남구 압구정로', 37.5270000, 127.0280000, '10:30', '20:00', TRUE),
@@ -34,7 +34,8 @@ INSERT INTO store (id, name, address, lat, lng, open_time, close_time, repair_av
 -- "친구에게 슬랙스를 선물하세요"가 나온다.
 --
 -- demo_serial을 넣지 않는다: 의류는 FR-028 시리얼 등록 대상이 아니고, 넣으면 그 화면에 옷이 뜬다.
--- image_url도 넣지 않는다: 죽은 컬럼이고 프론트는 productId로 이미지를 해석한다(F29).
+-- image_url은 NULL로 둔다. 2026-08-12에 imageUrl이 응답에 실리면서 값이 있으면 화면이 그것을 쓰는데,
+-- 여기 이모지를 넣으면 화면이 `🎒`를 이미지 주소로 받는다. 실제 MCM CDN 주소는 06과 07이 채운다.
 --
 -- **임시 데이터다.** F28(최은서)의 실제 MCM 의류 자료가 오면 이름과 가격과 색상을 교체하되
 -- **id 11에서 18은 유지한다** — 프론트 이미지 규약이 /products/{id}.webp라 id가 바뀌면 전부 다시 매핑해야 한다.
