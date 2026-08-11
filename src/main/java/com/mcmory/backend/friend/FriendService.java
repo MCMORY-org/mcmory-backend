@@ -12,6 +12,7 @@ import com.mcmory.backend.global.apiPayload.code.FriendErrorCode;
 import com.mcmory.backend.global.apiPayload.exception.CustomException;
 import com.mcmory.backend.common.Phones;
 import com.mcmory.backend.common.Tokens;
+import com.mcmory.backend.taste.SurveyAxes;
 import com.mcmory.backend.taste.TasteProfile;
 import com.mcmory.backend.taste.TasteProfileRepository;
 
@@ -130,11 +131,18 @@ public class FriendService {
 	 * 동시 호출은 서로 다른 토큰을 만들고 나중 것이 이김. 더블클릭 수준이라 잠그지 않음.
 	 */
 	@Transactional
-	public String issueSurveyToken(Long memberId, Long friendId) {
+	public SurveyLink issueSurveyToken(Long memberId, Long friendId, List<String> axes) {
 		Friend friend = this.friends.findByIdAndOwnerMemberIdAndDeletedAtIsNull(friendId, memberId)
 			.orElseThrow(() -> new CustomException(FriendErrorCode.NOT_FOUND));
 
-		return friend.issueSurveyToken(Tokens.issue());
+		// FEAT-W003: 토큰은 멱등이지만 질문 선별은 덮어씀. 토글을 고쳐 다시 저장해도 이미 보낸 링크가 살아 있어야 함
+		friend.selectSurveyAxes(SurveyAxes.format(axes));
+
+		return new SurveyLink(friend.issueSurveyToken(Tokens.issue()), SurveyAxes.parse(friend.getSurveyAxes()));
+	}
+
+	/** 발급 결과임. `axes`는 정규화된 질문 선별이라 화면이 저장 결과를 되받아 그림. */
+	public record SurveyLink(String token, List<String> axes) {
 	}
 
 	/**

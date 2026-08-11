@@ -35,6 +35,14 @@ public class Friend {
 	@Column(name = "survey_token", length = 24, unique = true)
 	private String surveyToken;
 
+	/**
+	 * FEAT-W003 `HOME-02` 질문 선별임. 켠 축을 `colors,styles,bags` 형태로 조인해 둠.
+	 *
+	 * **NULL은 세 축 전부임** — 발급 전 행과 FEAT-W003 이전에 만들어진 행이 그대로 동작해야 함.
+	 */
+	@Column(name = "survey_axes", length = 32)
+	private String surveyAxes;
+
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime createdAt;
 
@@ -73,6 +81,19 @@ public class Friend {
 			this.surveyToken = candidate;
 		}
 		return this.surveyToken;
+	}
+
+	/**
+	 * FEAT-W003 질문 선별 저장임. 토큰과 달리 **재발급마다 덮어씀** — 발송자가 토글을 고쳐 다시 저장하는 것이 정상 경로이고, 링크는 그대로
+	 * 살아 있어야 함.
+	 */
+	public void selectSurveyAxes(String axes) {
+		this.surveyAxes = axes;
+	}
+
+	/** 저장된 질문 선별임. NULL이면 세 축 전부라는 뜻임(FEAT-W003 이전 행 호환). */
+	public String getSurveyAxes() {
+		return this.surveyAxes;
 	}
 
 	/** 화면에 보일 이름임. 파기된 친구는 컬럼이 NULL이라 표시 시점에 문구로 바꿈. */
