@@ -12,6 +12,12 @@ import com.mcmory.backend.reservation.StoreReservation;
 import com.mcmory.backend.reservation.StoreReservationRepository;
 
 import com.mcmory.backend.global.apiPayload.CustomResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,6 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * storeId와 date를 함께 주면 슬롯 상태를 덧붙임. 화면이 매장 선택과 시간 선택을 한 흐름으로 처리해 호출을 나누지 않음.
  */
+@Tag(name = "매장",
+		description = "FR-025 매장 찾기와 예약 슬롯 조회임. 명세서 5.7절(#22)이 계약 정본이고, 절 전체가 이번 제출 범위밖이라 화면은 없으나 계약과 구현은 유지함")
 @RestController
 @RequestMapping("/api/v1/stores")
 public class StoreController {
@@ -53,11 +61,90 @@ public class StoreController {
 	public record StoresResponse(List<StoreView> list, List<SlotView> slots) {
 	}
 
+	@Operation(summary = "매장 목록과 예약 슬롯 조회",
+			description = """
+					명세서 5.7절 #22임. **인증 불필요**(비회원 공개 경로).
+
+					필터 `repair`·`openNow`·`reservable`은 값이 `"1"`일 때만 켜지고 전부 AND로 결합함. 정렬은 거리 오름차순 고정임.
+
+					**함정 1**: `storeId`와 `date`를 **함께** 줘야 `result.slots`가 채워짐. 둘 중 하나라도 없으면 `slots`는 `null`임.
+
+					**함정 2**: 없는 `storeId`를 줘도 에러가 아니라 `slots`가 `null`임 — 빈 결과로 응답함.
+
+					**함정 3**: 슬롯은 10개 고정(`10:00`, `11:00`, `13:00`부터 `20:00`까지 매시)이고 **12시는 비활성이 아니라 아예 없음**(점심 휴게).
+
+					**함정 4**: `state`는 `AVAILABLE`과 `DISABLED` 두 값뿐임. `PAST`는 state가 아니라 `DISABLED`의 `reason`임(다른 사유는 `BOOKED`). `AVAILABLE`이면 `reason`은 `null`임.
+
+					**함정 5**: `repair=1`은 매장의 전역 `repairAvailable` 플래그만 봄. **제품별 수리 카테고리 매칭은 구현하지 않았음**(명세서 6장).
+
+					**함정 6**: `distanceKm`은 실제 거리 계산이 아니라 프로토타입 고정값임.
+
+					실패 코드는 없음 — 이 경로는 파라미터가 틀려도 에러 대신 빈 결과를 반환함.""")
+	@ApiResponse(responseCode = "200",
+			description = "성공. 봉투 `code`는 문자열 `\"200\"`임. `slots`는 `storeId`와 `date`를 함께 준 경우에만 채워지고 그 외에는 `null`임",
+			content = @Content(mediaType = "application/json",
+					examples = {
+							@ExampleObject(name = "목록만 (storeId·date 미지정)",
+									description = "명세서 5.7절 #22의 `slots`는 `null` 규칙", value = """
+											{
+											  "isSuccess": true,
+											  "code": "200",
+											  "message": "OK",
+											  "result": {
+											    "list": [
+											      {
+											        "id": 1,
+											        "name": "MCM 강남 본점",
+											        "address": "서울 강남구 압구정로",
+											        "distanceKm": 1.2,
+											        "closeTime": "20:00",
+											        "repairAvailable": true,
+											        "openNow": true,
+											        "reservable": true
+											      }
+											    ],
+											    "slots": null
+											  }
+											}"""),
+							@ExampleObject(name = "슬롯 포함 (storeId·date 동시 지정)",
+									description = "명세서 5.7절 #22의 슬롯 상태 규칙 — state는 두 값뿐이고 PAST는 reason임", value = """
+											{
+											  "isSuccess": true,
+											  "code": "200",
+											  "message": "OK",
+											  "result": {
+											    "list": [
+											      {
+											        "id": 1,
+											        "name": "MCM 강남 본점",
+											        "address": "서울 강남구 압구정로",
+											        "distanceKm": 1.2,
+											        "closeTime": "20:00",
+											        "repairAvailable": true,
+											        "openNow": true,
+											        "reservable": true
+											      }
+											    ],
+											    "slots": [
+											      { "slot": "10:00", "state": "DISABLED", "reason": "PAST" },
+											      { "slot": "11:00", "state": "DISABLED", "reason": "BOOKED" },
+											      { "slot": "13:00", "state": "AVAILABLE", "reason": null }
+											    ]
+											  }
+											}""") }))
 	@GetMapping
 	@Transactional(readOnly = true)
-	public CustomResponse<StoresResponse> stores(@RequestParam(required = false) String repair,
-			@RequestParam(required = false) String openNow, @RequestParam(required = false) String reservable,
-			@RequestParam(required = false) Long storeId, @RequestParam(required = false) String date) {
+	public CustomResponse<StoresResponse> stores(
+			@Parameter(description = "수리 가능 매장만. 값이 `\"1\"`일 때만 적용됨",
+					example = "1") @RequestParam(required = false) String repair,
+			@Parameter(description = "지금 영업 중인 매장만. 값이 `\"1\"`일 때만 적용됨",
+					example = "1") @RequestParam(required = false) String openNow,
+			@Parameter(description = "예약 가능 매장만. 값이 `\"1\"`일 때만 적용됨",
+					example = "1") @RequestParam(required = false) String reservable,
+			@Parameter(description = "슬롯을 조회할 매장 id. `date`와 함께 줘야 함. 없는 id면 에러 대신 `slots`가 `null`임",
+					example = "1") @RequestParam(required = false) Long storeId,
+			@Parameter(description = "슬롯 조회 날짜 `YYYY-MM-DD`. `storeId`와 함께 줘야 함",
+					example = "2026-08-21") @RequestParam(required = false) String date) {
 
 		boolean onlyRepair = "1".equals(repair);
 		boolean onlyOpenNow = "1".equals(openNow);
