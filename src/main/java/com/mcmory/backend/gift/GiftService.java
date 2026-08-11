@@ -243,6 +243,11 @@ public class GiftService {
 			throw new CustomException(GiftErrorCode.PRODUCT_NOT_FOUND);
 		}
 
+		// FIX-W004 ①: 번호 매칭이 없던 선물을 여기서 귀속함. 등록이 이 흐름의 유일한 인증 지점이라
+		// 여기서 안 채우면 받은 편지함(recipient_member_id 조회)이 영영 비어 있음.
+		// 알림은 만들지 않음 — FR-017이 도착 알림을 발송 시점 1회로 못박았고, 여기서 만들면 수신자 본인에게 뒤늦게 뜸
+		gift.claimRecipient(memberId);
+
 		// 재클릭은 새 행을 만들지 않고 기존 행을 그대로 돌려줌(멱등)
 		OwnedProduct owned = this.owned.findByGiftIdAndDeletedAtIsNull(gift.getId())
 			.orElseGet(() -> this.owned.save(OwnedProduct.fromGift(memberId, product.getId(), gift.getId())));
@@ -258,9 +263,9 @@ public class GiftService {
 		if (productId == null) {
 			throw new CustomException(GiftErrorCode.PRODUCT_NOT_FOUND);
 		}
-		// 추천 ID는 선택 입력임. 오면 소유를 확인해 남의 추천을 매다는 것을 막음
+		// 추천 ID는 선택 입력임. 오면 소유와 함께 **그 추천이 실제로 이 상품을 담고 있는지**까지 확인함(FIX-W004 ③)
 		if (recommendationId != null) {
-			this.recommendations.requireOwned(memberId, recommendationId);
+			this.recommendations.requireContainsProduct(memberId, recommendationId, productId);
 		}
 		Product product = this.products.findById(productId)
 			.orElseThrow(() -> new CustomException(GiftErrorCode.PRODUCT_NOT_FOUND));
