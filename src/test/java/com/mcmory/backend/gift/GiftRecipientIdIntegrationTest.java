@@ -44,8 +44,9 @@ class GiftRecipientIdIntegrationTest extends HttpIntegrationSupport {
 	 */
 	@Test
 	void friendId를_주면_이름이_달라도_그_친구에게_가고_도착_알림이_생긴다() {
-		String token = 선물을_보낸다("{\"friendId\":" + SEEDED_FRIEND_ID + ",\"friendName\":\"친구 둘\"}").body()
-			.get("token")
+		// 수신함 식별은 익명 닉네임으로 함 — 받은 편지함에는 초대 토큰이 실리지 않음(FIX-W004 ②)
+		String nickname = 선물을_보낸다("{\"friendId\":" + SEEDED_FRIEND_ID + ",\"friendName\":\"친구 둘\"}").body()
+			.get("nickname")
 			.asString();
 
 		clearCookies();
@@ -53,7 +54,7 @@ class GiftRecipientIdIntegrationTest extends HttpIntegrationSupport {
 
 		var letters = get("/api/v1/letters");
 		assertThat(letters.status()).as(letters.text()).isEqualTo(200);
-		assertThat(letters.text()).as("수신함에 이 선물이 있어야 함").contains(token);
+		assertThat(letters.text()).as("수신함에 이 선물이 있어야 함").contains(nickname);
 
 		var notifications = get("/api/v1/notifications");
 		assertThat(notifications.body().get("unread").asInt()).as(notifications.text()).isPositive();

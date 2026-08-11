@@ -32,14 +32,14 @@ class GiftLifecycleIntegrationTest extends HttpIntegrationSupport {
 
 	@Test
 	void 전화번호가_회원과_일치하는_친구에게_보내면_수신함에_잡히고_도착_알림이_생긴다() {
-		String token = 선물을_보낸다("친구 2").body().get("token").asString();
+		String nickname = 선물을_보낸다("친구 2").body().get("nickname").asString();
 
 		clearCookies();
 		loginAs(RECIPIENT_PHONE, PASSWORD);
 
 		var letters = get("/api/v1/letters");
 		assertThat(letters.status()).isEqualTo(200);
-		assertThat(tokensOf(letters)).contains(token);
+		assertThat(nicknamesOf(letters)).contains(nickname);
 
 		var notifications = get("/api/v1/notifications");
 		assertThat(notifications.body().get("unread").asInt()).isPositive();
@@ -65,12 +65,12 @@ class GiftLifecycleIntegrationTest extends HttpIntegrationSupport {
 
 	@Test
 	void 전화번호_없는_친구에게_보낸_선물은_수신함에_잡히지_않는다() {
-		String token = 선물을_보낸다("번호없는친구").body().get("token").asString();
+		String nickname = 선물을_보낸다("번호없는친구").body().get("nickname").asString();
 
 		clearCookies();
 		loginAs(RECIPIENT_PHONE, PASSWORD);
 
-		assertThat(tokensOf(get("/api/v1/letters"))).doesNotContain(token);
+		assertThat(nicknamesOf(get("/api/v1/letters"))).doesNotContain(nickname);
 	}
 
 	@Test
@@ -149,8 +149,11 @@ class GiftLifecycleIntegrationTest extends HttpIntegrationSupport {
 
 	@Test
 	void 추천_ID를_실어_보낸_선물은_200이고_남의_추천_ID는_400이다() {
-		long recommendationId = 추천을_만든다().body().get("recommendationId").asLong();
-		long productId = 추천을_만든다().body().get("results").get(0).get("product").get("id").asLong();
+		// 한 추천에서 id와 상품을 함께 꺼냄. 추천을 두 번 만들어 서로 다른 추천의 값을 섞으면
+		// FIX-W004 ③의 대조 검증에 걸린다(같은 조건이라 우연히 통과해 오던 자리임)
+		var created = 추천을_만든다().body();
+		long recommendationId = created.get("recommendationId").asLong();
+		long productId = created.get("results").get(0).get("product").get("id").asLong();
 
 		String withRecommendation = "{\"productId\":" + productId + ",\"recommendationId\":" + recommendationId
 				+ ",\"letterBody\":\"고마워\",\"friendName\":\"친구 2\"}";
@@ -162,6 +165,54 @@ class GiftLifecycleIntegrationTest extends HttpIntegrationSupport {
 		String othersRecommendation = "{\"productId\":" + productId + ",\"recommendationId\":" + recommendationId
 				+ ",\"letterBody\":\"고마워\",\"friendName\":\"아무개\"}";
 		assertThat(post("/api/v1/gift", othersRecommendation).status()).isEqualTo(400);
+	}
+
+	/**
+	 * FIX-W004 ③: recommendationId를 실으면 productId가 **그 추천 결과 안에** 있어야 함. 소유만 보던 시절에는 내 추천
+	 * id 하나로 카탈로그의 아무 상품이나 "추천으로 고른 선물"로 실을 수 있었음.
+	 */
+	@Test
+	void 그_추천에_없는_상품을_추천_ID와_함께_보내면_400이다() {
+		var created = 추천을_만든다().body();
+		long recommendationId = created.get("recommendationId").asLong();
+
+		java.util.List<Long> recommended = new java.util.ArrayList<>();
+		created.get("results").forEach((item) -> recommended.add(item.get("product").get("id").asLong()));
+
+		// 추천 3건 밖의 상품 하나를 시드 카탈로그에서 고름
+		long outsider = -1;
+		for (long candidate = 1; candidate <= 10; candidate++) {
+			if (!recommended.contains(candidate)) {
+				outsider = candidate;
+				break;
+			}
+		}
+		assertThat(outsider).as("시드 카탈로그가 추천 3건보다 커야 이 테스트가 성립함").isPositive();
+
+		var response = post("/api/v1/gift", "{\"productId\":" + outsider + ",\"recommendationId\":" + recommendationId
+				+ ",\"letterBody\":\"고마워\",\"friendName\":\"친구 2\"}");
+		assertThat(response.status()).as(response.text()).isEqualTo(400);
+		assertThat(response.code()).isEqualTo("REC400_3");
+	}
+
+	/**
+	 * FIX-W004 ②: 받은 편지함에 초대 토큰을 싣지 않음. 토큰은 양도 가능한 자격이고 `/g/{token}`이 비인증 경로라, 발송자가 번호를
+	 * 오타 내 엉뚱한 회원이 수신자로 매칭되면 그 회원이 링크를 넘겨 임의의 제3자가 편지 전문과 사진을 열 수 있음.
+	 *
+	 * 발송분(`sent`)의 토큰은 남김 — 발송자가 자기가 보낸 링크를 받는 정상 경로이고 URL 복사가 그 값을 씀.
+	 */
+	@Test
+	void 받은_편지함에는_초대_토큰이_실리지_않고_보낸_편지함에는_실린다() {
+		선물을_보낸다("친구 2");
+
+		assertThat(get("/api/v1/letters").body().get("sent").get(0).has("token")).as("발송분 토큰은 F12 URL 복사가 씀").isTrue();
+
+		clearCookies();
+		loginAs(RECIPIENT_PHONE, PASSWORD);
+
+		var received = get("/api/v1/letters").body().get("received");
+		assertThat(received).isNotEmpty();
+		assertThat(received.get(0).has("token")).as("수신분에 토큰이 실리면 편지 전문이 제3자에게 열림").isFalse();
 	}
 
 	/** 편지함과 초대 조회의 상품 표시 계약임(F29). 프론트가 `productId`로 이미지를 고르므로 id가 빠지면 화면이 빔. */
@@ -218,10 +269,14 @@ class GiftLifecycleIntegrationTest extends HttpIntegrationSupport {
 		return created.body().get("friend").get("id").asLong();
 	}
 
-	private java.util.List<String> tokensOf(Response letters) {
-		java.util.List<String> tokens = new java.util.ArrayList<>();
-		letters.body().get("received").forEach((item) -> tokens.add(item.get("token").asString()));
-		return tokens;
+	/**
+	 * 수신함의 선물을 익명 닉네임으로 식별함. 초대 토큰으로 식별하던 것을 FIX-W004 ②에서 바꿨음 — 받은 편지함 응답에 토큰이 실리면 오귀속된
+	 * 회원이 그것을 넘겨 임의의 제3자가 편지 전문과 사진을 열 수 있음. 닉네임은 선물마다 새로 발급되므로 식별에 충분함.
+	 */
+	private java.util.List<String> nicknamesOf(Response letters) {
+		java.util.List<String> nicknames = new java.util.ArrayList<>();
+		letters.body().get("received").forEach((item) -> nicknames.add(item.get("nickname").asString()));
+		return nicknames;
 	}
 
 }

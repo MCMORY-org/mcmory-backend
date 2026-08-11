@@ -76,11 +76,13 @@ public class LetterboxController {
 	 * friend.name은 싣지 않음. friend.name은 발송자가 수신자를 부르는 이름이라 발송자의 명명 습관이 새는 통로가 됨.
 	 *
 	 * letterBody도 없음. 본문은 동의 게이트를 지나는 `/api/v1/g/{token}`에서만 제공함(FR-015).
+	 *
+	 * **초대 토큰도 싣지 않음**(FIX-W004 ②). 토큰은 양도 가능한 자격이고 그 경로가 비인증이라, 발송자가 번호를 오타 내 엉뚱한 회원이
+	 * 수신자로 매칭되면 그 회원이 링크를 넘겨 임의의 제3자가 편지 전문과 사진을 열 수 있음. 수신자는 발송자가 보낸 링크로 편지를 엶. 편지함 화면을
+	 * 만들게 되면 인증된 수신자 전용 열람 경로를 신설할 것 — 토큰을 되돌리지 말 것.
 	 */
 	public record ReceivedView(
 			@Schema(description = "선물 id임", example = "7", requiredMode = Schema.RequiredMode.REQUIRED) Long id,
-			@Schema(description = "초대 토큰임. **편지 본문을 보려면 이 토큰으로 `GET /api/v1/g/{token}`(명세서 #12)을 거쳐야 함** — 목록에는 본문이 없음(FR-015)",
-					example = "w9r1tv4l6zq8pd3ncm07skb2", requiredMode = Schema.RequiredMode.REQUIRED) String token,
 			@Schema(description = "발신자 익명 닉네임임(형용사 더하기 호저). **수신분에 나가는 발신자 정보는 이것 하나뿐임**(ADR-001) — "
 					+ "`senderMemberId`·발송자 실명·`friendId`·`friend.name`은 싣지 않음", example = "느긋한 호저",
 					requiredMode = Schema.RequiredMode.REQUIRED) String nickname,
@@ -108,7 +110,7 @@ public class LetterboxController {
 
 					함정 2: `received` 항목에 나가는 발신자 정보는 익명 닉네임 하나뿐임(ADR-001). `senderMemberId`·발송자 실명·`friendId`·`friend.name`은 싣지 않음.
 
-					함정 3: **편지 본문(`letterBody`)은 목록에 없음.** 본문은 동의 게이트를 지나는 `GET /api/v1/g/{token}`(명세서 #12)에서만 제공함(FR-015).
+					함정 3: **편지 본문(`letterBody`)은 목록에 없음.** 본문은 동의 게이트를 지나는 `GET /api/v1/g/{token}`(명세서 #12)에서만 제공함(FR-015). **수신분에는 그 `token`도 없음** — 토큰은 양도 가능한 자격이고 그 경로가 비인증이라, 번호 오타로 오귀속된 회원이 링크를 넘기면 제3자가 편지를 열게 됨. 수신자는 발송자가 보낸 링크로 편지를 엶. 발송분(`sent`)에는 URL 복사를 위해 남아 있음.
 
 					함정 4: 삭제된 친구는 `friendName`이 `"삭제된 친구"`로 보임(ADR-003 개인정보 즉시 파기).
 
@@ -136,7 +138,6 @@ public class LetterboxController {
 					    "received": [
 					      {
 					        "id": 7,
-					        "token": "w9r1tv4l6zq8pd3ncm07skb2",
 					        "nickname": "느긋한 호저",
 					        "productName": "비세토스 미니백",
 					        "productId": 5,
@@ -173,9 +174,8 @@ public class LetterboxController {
 		List<ReceivedView> received = this.gifts.findByRecipientMemberIdOrderByIdDesc(memberId).stream().map((gift) -> {
 			Product product = productOf(gift);
 
-			return new ReceivedView(gift.getId(), gift.getInviteToken(), gift.getAnonNickname(),
-					(product == null) ? null : product.getName(), gift.getProductId(), gift.getStatus(),
-					gift.getSentAt(), gift.getOpenedAt());
+			return new ReceivedView(gift.getId(), gift.getAnonNickname(), (product == null) ? null : product.getName(),
+					gift.getProductId(), gift.getStatus(), gift.getSentAt(), gift.getOpenedAt());
 		}).toList();
 
 		// unread는 발송분 기준(수신자가 열어본 건수)이고 receivedUnopened는 수신분 기준(내가 아직 안 연 건수)임.

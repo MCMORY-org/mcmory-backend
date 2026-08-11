@@ -182,12 +182,21 @@ public class RecommendService {
 		recommendation.attachTo(friendId);
 	}
 
-	/** 소유 검증임. 선물에 추천을 매달 때 남의 추천 ID를 실어 보내는 것을 막음. */
+	/** 소유와 구성 검증임. 선물에 추천을 매달 때 남의 추천 ID와 그 추천에 없는 상품을 막음. */
 	@Transactional(readOnly = true)
-	public void requireOwned(Long memberId, Long recommendationId) {
+	public void requireContainsProduct(Long memberId, Long recommendationId, Long productId) {
 		this.recommendations.findById(recommendationId)
 			.filter((found) -> found.isOwnedBy(memberId))
 			.orElseThrow(() -> new CustomException(RecommendErrorCode.INVALID_REFERENCE));
+
+		// 소유만 보면 내 추천 id 하나로 카탈로그의 아무 상품이나 "추천으로 고른 선물"로 실을 수 있음(FIX-W004 ③).
+		// 남의 추천과 같은 코드를 씀 — 그 추천이 무엇을 담고 있는지 알려주지 않기 위함임
+		boolean contains = this.recommendationResults.findByRecommendationIdOrderByRankNo(recommendationId)
+			.stream()
+			.anyMatch((row) -> row.getProductId().equals(productId));
+		if (!contains) {
+			throw new CustomException(RecommendErrorCode.INVALID_REFERENCE);
+		}
 	}
 
 	/**
