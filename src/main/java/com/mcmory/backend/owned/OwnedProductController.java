@@ -70,7 +70,11 @@ public class OwnedProductController {
 			@Schema(description = "상품 id임. 화면은 이 값으로 상품 이미지를 고름", example = "1",
 					requiredMode = Schema.RequiredMode.REQUIRED) Long productId,
 			@Schema(description = "상품명임", example = "Tracy 비세토스 크로스바디",
-					requiredMode = Schema.RequiredMode.REQUIRED) String name) {
+					requiredMode = Schema.RequiredMode.REQUIRED) String name,
+			@Schema(description = "상품 이미지 URL임. **있으면 이 값을 그대로 쓰고, `null`이면 화면이 자체 규약(`/products/{id}.webp`)으로 고를 것.** "
+					+ "MCM 공식 CDN 주소라 우리 서버를 거치지 않음. 옛 시드 상품은 아직 `null`임",
+					example = "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String imageUrl) {
 	}
 
 	@Schema(name = "OwnedView", description = "보유 제품 목록의 한 행임(19번).")
@@ -96,24 +100,25 @@ public class OwnedProductController {
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "목록 반환",
 					content = @Content(mediaType = "application/json",
-							examples = @ExampleObject(name = "성공", value = """
-									{
-									  "isSuccess": true,
-									  "code": "200",
-									  "message": "OK",
-									  "result": {
-									    "list": [
-									      {
-									        "id": 1,
-									        "source": "EXTERNAL",
-									        "serialMemo": "MCM-2024-0001",
-									        "createdAt": "2026-08-11",
-									        "product": { "productId": 2, "name": "비세토스 토트백" }
-									      }
-									    ]
-									  }
-									}
-									"""))),
+							examples = @ExampleObject(name = "성공",
+									value = """
+											{
+											  "isSuccess": true,
+											  "code": "200",
+											  "message": "OK",
+											  "result": {
+											    "list": [
+											      {
+											        "id": 1,
+											        "source": "EXTERNAL",
+											        "serialMemo": "MCM-2024-0001",
+											        "createdAt": "2026-08-11",
+											        "product": { "productId": 2, "name": "비세토스 토트백", "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MWSGSTA02CO001_01/MWSGSTA02CO001?$large$&fmt=auto&qlt=default" }
+											      }
+											    ]
+											  }
+											}
+											"""))),
 			@ApiResponse(responseCode = "401", description = "비로그인",
 					content = @Content(mediaType = "application/json",
 							examples = @ExampleObject(name = "AUTH401_1", value = """
@@ -129,8 +134,8 @@ public class OwnedProductController {
 					: this.products.findById(row.getProductId()).orElse(null);
 
 			return new OwnedView(row.getId(), row.getSource(), row.getSerialMemo(),
-					(row.getCreatedAt() == null) ? null : row.getCreatedAt().toLocalDate(),
-					(product == null) ? null : new ProductView(product.getId(), product.getName()));
+					(row.getCreatedAt() == null) ? null : row.getCreatedAt().toLocalDate(), (product == null) ? null
+							: new ProductView(product.getId(), product.getName(), product.getImageUrl()));
 		}).toList();
 
 		return CustomResponse.ok(Map.of("list", list));
@@ -146,17 +151,18 @@ public class OwnedProductController {
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "등록 성공",
 					content = @Content(mediaType = "application/json",
-							examples = @ExampleObject(name = "성공", value = """
-									{
-									  "isSuccess": true,
-									  "code": "200",
-									  "message": "OK",
-									  "result": {
-									    "ok": true,
-									    "product": { "productId": 2, "name": "비세토스 토트백" }
-									  }
-									}
-									"""))),
+							examples = @ExampleObject(name = "성공",
+									value = """
+											{
+											  "isSuccess": true,
+											  "code": "200",
+											  "message": "OK",
+											  "result": {
+											    "ok": true,
+											    "product": { "productId": 2, "name": "비세토스 토트백", "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MWSGSTA02CO001_01/MWSGSTA02CO001?$large$&fmt=auto&qlt=default" }
+											  }
+											}
+											"""))),
 			@ApiResponse(responseCode = "400", description = "일련번호 누락", content = @Content(
 					mediaType = "application/json", examples = @ExampleObject(name = "OWNED400_1", value = """
 							{ "isSuccess": false, "code": "OWNED400_1", "message": "일련번호를 입력해주세요", "result": null }
@@ -195,7 +201,8 @@ public class OwnedProductController {
 			});
 
 		this.owned.save(OwnedProduct.external(memberId, product.getId(), serial));
-		return CustomResponse.ok(Map.of("ok", true, "product", new ProductView(product.getId(), product.getName())));
+		return CustomResponse.ok(Map.of("ok", true, "product",
+				new ProductView(product.getId(), product.getName(), product.getImageUrl())));
 	}
 
 	/**
@@ -293,50 +300,57 @@ public class OwnedProductController {
 
 					함정 4: 없는 id, 남의 제품, 삭제된 제품, **상품 연결이 끊긴 제품**을 모두 `OWNED404_2`로 응답함 — 관리 방법(#32)과 같은 계약임.""")
 	@ApiResponses({
-			@ApiResponse(responseCode = "200", description = "추천 반환", content = @Content(mediaType = "application/json",
-					examples = { @ExampleObject(name = "기본 호출 — 모델을 부르지 않아 언제나 RULE", value = """
-							{
-							  "isSuccess": true,
-							  "code": "200",
-							  "message": "OK",
-							  "result": {
-							    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품" },
-							    "reasonSource": "RULE",
-							    "results": [
-							      {
-							        "productId": 13,
-							        "name": "로고 자카드 니트",
-							        "category": "WOMAN TOP",
-							        "price": 690000,
-							        "officialUrl": "https://kr.mcmworldwide.com",
-							        "reasonType": "PERSONAL",
-							        "reason": "평소 미니멀 스타일을 즐기시네요"
-							      }
-							    ]
-							  }
-							}
-							"""), @ExampleObject(name = "aiReason=true — 모델이 첫 문구를 씀", value = """
-							{
-							  "isSuccess": true,
-							  "code": "200",
-							  "message": "OK",
-							  "result": {
-							    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품" },
-							    "reasonSource": "LLM",
-							    "results": [
-							      {
-							        "productId": 13,
-							        "name": "로고 자카드 니트",
-							        "category": "WOMAN TOP",
-							        "price": 690000,
-							        "officialUrl": "https://kr.mcmworldwide.com",
-							        "reasonType": "PERSONAL",
-							        "reason": "미니멀 스타일에 로고 자카드 니트 어떠세요"
-							      }
-							    ]
-							  }
-							}
-							""") })),
+			@ApiResponse(responseCode = "200", description = "추천 반환",
+					content = @Content(mediaType = "application/json",
+							examples = {
+									@ExampleObject(name = "기본 호출 — 모델을 부르지 않아 언제나 RULE",
+											value = """
+													{
+													  "isSuccess": true,
+													  "code": "200",
+													  "message": "OK",
+													  "result": {
+													    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품", "imageUrl": null },
+													    "reasonSource": "RULE",
+													    "results": [
+													      {
+													        "productId": 13,
+													        "name": "로고 자카드 니트",
+													        "category": "WOMAN TOP",
+													        "price": 690000,
+													        "imageUrl": null,
+													        "officialUrl": "https://kr.mcmworldwide.com",
+													        "reasonType": "PERSONAL",
+													        "reason": "평소 미니멀 스타일을 즐기시네요"
+													      }
+													    ]
+													  }
+													}
+													"""),
+									@ExampleObject(name = "aiReason=true — 모델이 첫 문구를 씀",
+											value = """
+													{
+													  "isSuccess": true,
+													  "code": "200",
+													  "message": "OK",
+													  "result": {
+													    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품", "imageUrl": null },
+													    "reasonSource": "LLM",
+													    "results": [
+													      {
+													        "productId": 13,
+													        "name": "로고 자카드 니트",
+													        "category": "WOMAN TOP",
+													        "price": 690000,
+													        "imageUrl": null,
+													        "officialUrl": "https://kr.mcmworldwide.com",
+													        "reasonType": "PERSONAL",
+													        "reason": "미니멀 스타일에 로고 자카드 니트 어떠세요"
+													      }
+													    ]
+													  }
+													}
+													""") })),
 			@ApiResponse(responseCode = "401", description = "비로그인",
 					content = @Content(mediaType = "application/json",
 							examples = @ExampleObject(name = "AUTH401_1", value = """
