@@ -205,6 +205,8 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 		var onAxis = post("/api/v1/s/" + token,
 				"{\"privacyAgreed\":true,\"colors\":[\"블랙\"],\"styles\":[],\"bags\":[]}");
 		assertThat(onAxis.status()).as(onAxis.text()).isEqualTo(200);
+		// 200만 보면 축 검사가 저장까지 통째로 건너뛰어도 통과함(CodeRabbit PR #18)
+		assertThat(get("/api/v1/s/" + token).body().get("answered").asBoolean()).isTrue();
 	}
 
 	/** 토글을 고쳐 다시 저장하는 것이 정상 경로임 — 그때 이미 보낸 링크가 죽으면 안 됨. */
