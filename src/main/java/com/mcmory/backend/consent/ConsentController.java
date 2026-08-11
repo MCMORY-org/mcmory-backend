@@ -11,6 +11,7 @@ import com.mcmory.backend.global.apiPayload.exception.CustomException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,7 +39,11 @@ public class ConsentController {
 		this.currentMember = currentMember;
 	}
 
-	public record ConsentRequest(String type, Boolean agreed) {
+	public record ConsentRequest(@Schema(
+			description = "동의 항목 코드임. 회원이 관리하는 항목은 `PRIVACY`(개인정보 수집과 이용, 가입 필수)와 `SMS`(SMS 수신, 선택) 둘뿐임. 수신자 동의(`RECIPIENT_PRIVACY`)는 회원의 것이 아니라 선물 건에 붙는 동의라 여기서 보내면 `CONSENT400_2`임",
+			example = "SMS", requiredMode = Schema.RequiredMode.REQUIRED) String type,
+			@Schema(description = "동의 여부임. true가 동의, false가 철회임. 함정 둘 — 생략하면 `VALID400_2`로 거부함(누락을 false로 접으면 필드를 빠뜨린 요청이 조용히 철회가 됨), 그리고 필수 항목인 `PRIVACY`에 false를 보내면 `CONSENT400_3`임",
+					example = "true", requiredMode = Schema.RequiredMode.REQUIRED) Boolean agreed) {
 	}
 
 	/** needsAction이 하나라도 참이면 화면이 동의 시트를 다시 띄운다. */

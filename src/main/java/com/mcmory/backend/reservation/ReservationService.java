@@ -14,6 +14,7 @@ import com.mcmory.backend.product.Product;
 import com.mcmory.backend.product.ProductRepository;
 import com.mcmory.backend.store.StoreRepository;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,8 +51,19 @@ public class ReservationService {
 		this.products = products;
 	}
 
-	public record ReservationView(Long id, LocalDate reserveDate, String timeSlot, String requestNote, String storeName,
-			String productName) {
+	public record ReservationView(
+			@Schema(description = "예약 id. 취소(#25) 요청 본문의 `id`에 그대로 넣는 값임", example = "1",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+			@Schema(description = "방문 날짜 `YYYY-MM-DD`임", example = "2026-08-20",
+					requiredMode = Schema.RequiredMode.REQUIRED) LocalDate reserveDate,
+			@Schema(description = "방문 시각 `HH:mm`임. 슬롯 10개 중 하나이고 12시는 없음(점심 휴게)", example = "14:00",
+					requiredMode = Schema.RequiredMode.REQUIRED) String timeSlot,
+			@Schema(description = "요청 사항. 500자 이하이고 예약 때 비워둘 수 있어 선택임", example = "선물 포장 부탁드립니다", maxLength = 500,
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true) String requestNote,
+			@Schema(description = "매장 이름. 함정 — 매장 id가 아니라 이름만 줌. 예약 뒤 매장이 지워지면 `null`임", example = "MCM 청담 플래그십",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true) String storeName,
+			@Schema(description = "제품 이름. 함정 — 보유 제품 id가 아니라 이름만 줌. 보유 제품이나 제품이 지워지면 `null`임", example = "비세토스 백팩",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true) String productName) {
 	}
 
 	@Transactional(readOnly = true)

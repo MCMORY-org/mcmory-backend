@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import com.mcmory.backend.global.apiPayload.code.FriendErrorCode;
@@ -37,7 +38,21 @@ public class FriendService {
 	}
 
 	/** 목록에는 취향 요약만 붙임. 원본 답변은 taste_profile에 있음(ADR-009 이원화). */
-	public record FriendView(Long id, String name, String phone, String tasteSummary) {
+	@Schema(name = "FriendView", description = "친구 목록 항목임(명세서 5.5 #15)")
+	public record FriendView(
+			@Schema(description = "친구 id. 취향 저장·삭제·수정·설문 링크 발급 요청에 그대로 씀", example = "1",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+			@Schema(description = "친구 이름. 1자 이상 20자 이하임. **삭제된 친구는 목록에 나오지 않음** — "
+					+ "ADR-003에 따라 삭제 시 이름과 전화번호를 DB에서 즉시 NULL로 파기함", example = "김민지",
+					requiredMode = Schema.RequiredMode.REQUIRED) String name,
+			@Schema(description = "친구 전화번호. 숫자만 저장하므로 하이픈 없이 나감(`010` 시작 10에서 11자리, ADR-008). "
+					+ "선물 발송 경로가 이름으로 만든 친구 행은 번호를 나중에 채우므로 null일 수 있음", example = "01012345678",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String phone,
+			@Schema(description = "취향 요약 한 줄임. 취향이 아직 없으면 null임 — 발송자의 취향 저장이나 수신자 설문 제출로 채워짐. "
+					+ "재료는 취향 색상 6종(코냑·블랙·베이지·핑크·골드·그레이)과 "
+					+ "옷 스타일 6종(캐주얼·미니멀·스트릿·클래식·러블리·포멀)과 가방 4종(숄더백·토트백·크로스바디·백팩)임. "
+					+ "**이 색상 축은 편지지 색 4종(GOLD·BLACK·BEIGE·PINK)과도 상품 색상과도 다른 축이라 섞지 말 것**", example = "블랙, 미니멀",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String tasteSummary) {
 	}
 
 	@Transactional(readOnly = true)

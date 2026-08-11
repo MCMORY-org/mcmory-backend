@@ -10,6 +10,7 @@ import com.mcmory.backend.global.apiPayload.CustomResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,11 +36,26 @@ public class ReservationController {
 		this.currentMember = currentMember;
 	}
 
-	public record CreateRequest(Long storeId, Long ownedProductId, String reserveDate, String timeSlot,
-			String requestNote) {
+	public record CreateRequest(@Schema(
+			description = "예약할 매장 id. `GET /api/v1/stores`의 `result.list[].id`를 그대로 씀. 없는 매장이거나 누락이면 `RESV400_2`임",
+			example = "1", requiredMode = Schema.RequiredMode.REQUIRED) Long storeId,
+			@Schema(description = "방문할 보유 제품 id. 함정 — **내 것이고 삭제되지 않은 보유 제품만** 허용함. 남의 것이거나 없거나 누락이면 존재 여부를 알려주지 않고 모두 `RESV400_2`임. 제품 id가 아니라 보유 제품 id임",
+					example = "1", requiredMode = Schema.RequiredMode.REQUIRED) Long ownedProductId,
+			@Schema(description = "방문 날짜 `YYYY-MM-DD`임. 형식이 틀리면 `VALID400_0`, 누락이면 `VALID400_2`임",
+					example = "2026-08-20", pattern = "^\\d{4}-\\d{2}-\\d{2}$",
+					requiredMode = Schema.RequiredMode.REQUIRED) String reserveDate,
+			@Schema(description = "방문 시각 `HH:mm`임. 슬롯 10개 고정(`10:00`, `11:00`, `13:00`부터 `20:00`까지 매시)이고 **12시는 아예 없음**(점심 휴게). 밖이면 `RESV400_1`임. 함정 — `reserveDate`와 합친 방문 시각이 현재로부터 1시간 이내면 슬롯 목록에 있어도 `RESV400_4`로 거부함",
+					example = "14:00", allowableValues = {
+							"10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00" },
+					requiredMode = Schema.RequiredMode.REQUIRED) String timeSlot,
+			@Schema(description = "요청 사항. **500자 이하**이고 초과는 `RESV400_5`임. 매장에 남길 말이 없을 수 있어 선택이며, 생략하거나 `null`이면 빈 문자열로 저장함",
+					example = "선물 포장 부탁드립니다", maxLength = 500, requiredMode = Schema.RequiredMode.NOT_REQUIRED,
+					nullable = true) String requestNote){
 	}
 
-	public record IdRequest(Long id) {
+	public record IdRequest(@Schema(
+			description = "취소할 예약 id. `GET /api/v1/reservations`의 `result.list[].id`임. 함정 — **남의 예약과 없는 예약이 같은 `RESV404_1`이라** 존재 여부를 알 수 없음",
+			example = "1", requiredMode = Schema.RequiredMode.REQUIRED) Long id) {
 	}
 
 	@Operation(summary = "내 예약 목록 조회",

@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,15 +51,43 @@ public class StoreController {
 		this.reservations = reservations;
 	}
 
-	public record StoreView(Long id, String name, String address, double distanceKm, String closeTime,
-			boolean repairAvailable, boolean openNow, boolean reservable) {
+	public record StoreView(
+			@Schema(description = "매장 id. 예약 생성(#24)의 `storeId`와 슬롯 조회 쿼리 `storeId`에 그대로 넣는 값임", example = "1",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+			@Schema(description = "매장 이름", example = "MCM 강남 본점",
+					requiredMode = Schema.RequiredMode.REQUIRED) String name,
+			@Schema(description = "매장 주소", example = "서울 강남구 압구정로",
+					requiredMode = Schema.RequiredMode.REQUIRED) String address,
+			@Schema(description = "거리. **km 단위**임. 함정 — 실제 좌표 거리 계산이 아니라 프로토타입 고정값이고, 목록 정렬은 이 값의 오름차순 고정임",
+					example = "1.2", requiredMode = Schema.RequiredMode.REQUIRED) double distanceKm,
+			@Schema(description = "마감 시각 `HH:mm`임", example = "20:00",
+					requiredMode = Schema.RequiredMode.REQUIRED) String closeTime,
+			@Schema(description = "수리 가능 여부. 함정 — 매장의 **전역** 플래그이고 제품별 수리 카테고리 매칭은 구현하지 않았음(명세서 6장). 쿼리 `repair=1`이 보는 값이 이것임",
+					example = "true", requiredMode = Schema.RequiredMode.REQUIRED) boolean repairAvailable,
+			@Schema(description = "조회 시각이 매장 영업 시간 안인지 여부임. 요청 시점마다 달라지는 계산값임", example = "true",
+					requiredMode = Schema.RequiredMode.REQUIRED) boolean openNow,
+			@Schema(description = "예약 가능 여부. 함정 — 별도 컬럼이 아니라 `repairAvailable`이 참이면서 이름에 `서비스센터`가 없는 매장이라는 근사 규칙임",
+					example = "true", requiredMode = Schema.RequiredMode.REQUIRED) boolean reservable) {
 	}
 
-	public record SlotView(String slot, String state, String reason) {
+	public record SlotView(@Schema(
+			description = "슬롯 시각 `HH:mm`임. 10개 고정(`10:00`, `11:00`, `13:00`부터 `20:00`까지 매시)이고 **12시는 비활성이 아니라 아예 없음**(점심 휴게). 예약 생성(#24)의 `timeSlot`에 그대로 넣는 값임",
+			example = "13:00", requiredMode = Schema.RequiredMode.REQUIRED) String slot,
+			@Schema(description = "슬롯 상태. `AVAILABLE`과 `DISABLED` **두 값뿐임**. 함정 — `PAST`는 state가 아니라 `reason`임",
+					example = "AVAILABLE", allowableValues = {
+							"AVAILABLE", "DISABLED" },
+					requiredMode = Schema.RequiredMode.REQUIRED) String state,
+			@Schema(description = "비활성 사유. `BOOKED`(이미 예약됨)와 `PAST`(이미 지났거나 1시간 이내로 임박) 둘임. `state`가 `AVAILABLE`이면 항상 `null`이라 선택임",
+					example = "BOOKED", allowableValues = { "BOOKED", "PAST" },
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true) String reason){
 	}
 
 	/** slots는 storeId와 date가 함께 오지 않으면 null임. 프로토타입 응답 형태를 그대로 유지함. */
-	public record StoresResponse(List<StoreView> list, List<SlotView> slots) {
+	public record StoresResponse(
+			@Schema(description = "필터를 통과한 매장 목록임. 거리 오름차순 고정이고, 조건에 맞는 매장이 없으면 빈 배열임",
+					requiredMode = Schema.RequiredMode.REQUIRED) List<StoreView> list,
+			@Schema(description = "슬롯 목록. 함정 — `storeId`와 `date`를 **함께** 준 경우에만 채워지고, 둘 중 하나라도 없거나 없는 `storeId`면 에러가 아니라 `null`임. 채워지면 항상 10개임",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true) List<SlotView> slots) {
 	}
 
 	@Operation(summary = "매장 목록과 예약 슬롯 조회",

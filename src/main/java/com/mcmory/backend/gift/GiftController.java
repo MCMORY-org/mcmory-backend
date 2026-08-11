@@ -10,6 +10,7 @@ import com.mcmory.backend.global.apiPayload.CustomResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,11 +43,34 @@ public class GiftController {
 	 * `friendId`가 수신자 식별의 정본이고 `friendName`은 폴백임. 둘 다 받는 이유는 친구 등록 화면을 거치지 않는 발송 경로가 실재하기
 	 * 때문임 — 그 경로는 id를 가질 수 없음. **id가 오면 이름은 무시함**(FIX-W001 T1).
 	 */
-	public record SendRequest(Long productId, Long recommendationId, String letterBody, Long friendId,
-			String friendName, List<String> letterImageUrls, String letterColor) {
+	public record SendRequest(
+			@Schema(description = "보낼 시드 상품 id임", example = "1",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long productId,
+			@Schema(description = "이 발송의 근거가 된 추천 id임. 선택인 이유는 추천을 거치지 않고 상품을 직접 골라 보내는 경로가 있기 때문임. **내 추천만 매달 수 있고** 남의 추천 id는 `REC400_3`임",
+					example = "3", nullable = true,
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) Long recommendationId,
+			@Schema(description = "편지 본문임. 앞뒤 공백을 제거한 뒤 1자 이상 200자 이하임(화면 표기 `78/200자`와 같은 한도임). 벗어나면 `GIFT400_2`임",
+					example = "생일 축하해. 늘 고마워", minLength = 1, maxLength = 200,
+					requiredMode = Schema.RequiredMode.REQUIRED) String letterBody,
+			@Schema(description = "**수신자 식별의 정본임.** 오면 `friendName`을 무시하고 이 친구에게 보냄. 선택인 이유는 친구 등록 화면을 거치지 않는 발송 경로가 실재해 id를 가질 수 없기 때문임. **화면이 친구를 고를 수 있으면 반드시 이 값을 보낼 것** — 이름으로 찾으면 한 글자만 틀려도 번호 없는 친구 행이 새로 생겨 도착 알림(FR-017)이 조용히 끊김. 없는 id와 남의 친구는 함께 `FRIEND404_1`임(존재 여부를 갈라주지 않음)",
+					example = "101", nullable = true, requiredMode = Schema.RequiredMode.NOT_REQUIRED) Long friendId,
+			@Schema(description = "`friendId`가 없을 때만 쓰는 폴백 이름임. 앞뒤 공백 제거 후 20자 이하이고 21자 이상은 `FRIEND400_1`임. **비우면 `친구`로 저장됨**. `friendId`가 오면 이 값은 무시됨",
+					example = "지민", maxLength = 20, nullable = true,
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String friendName,
+			@Schema(description = "편지에 붙일 사진 URL 목록임. 선택이고, **#28 `POST /api/v1/gift/letter-images`가 발급한 `/letter-images/`로 시작하는 URL만** 받음 — 외부 URL은 `GIFT400_7`임. 최대 5개이고 초과는 `GIFT400_6`임",
+					example = "[\"/letter-images/8f0c1d2e111122223333444455556666.jpg\"]", nullable = true,
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) List<String> letterImageUrls,
+			@Schema(description = "편지지 **배경색 토큰**임(글자색이 아니고 자유 hex도 아님 — 대비는 화면이 배경 명도로 판단함). 선택이고 고르지 않으면 저장하지 않음. 소문자로 보내도 대문자로 저장하며 넷 밖은 `GIFT400_8`임. **취향 색상 6종·상품 색상과는 다른 축이라 섞지 말 것**",
+					example = "GOLD", allowableValues = {
+							"GOLD", "BLACK", "BEIGE", "PINK" },
+					nullable = true, requiredMode = Schema.RequiredMode.NOT_REQUIRED) String letterColor){
 	}
 
-	public record ChangeRequest(String reason) {
+	public record ChangeRequest(@Schema(
+			description = "옵션 변경 문의 사유임(ADR-007 결정 2의 고정 4종). `SIZE` 크기, `COLOR` 색상, `ALREADY_OWNED` 이미 보유, `ETC` 기타임. 넷 밖은 `GIFT400_4`임. 발송자에게는 알림 `type`이 `CHANGE_REQ_SIZE` 형태로 전달됨",
+			example = "SIZE", allowableValues = {
+					"SIZE", "COLOR", "ALREADY_OWNED", "ETC" },
+			requiredMode = Schema.RequiredMode.REQUIRED) String reason){
 	}
 
 	/** FR-013 선물 발송임. */
@@ -66,7 +90,7 @@ public class GiftController {
 							  "isSuccess": true,
 							  "code": "200",
 							  "message": "OK",
-							  "result": { "token": "abc123", "nickname": "다정한 호저" }
+							  "result": { "token": "k3n8pq2wz7ta5vh0jr4bmx91", "nickname": "다정한 호저" }
 							}"""))),
 			@ApiResponse(responseCode = "400",
 					description = "`GIFT400_1` 상품을 찾을 수 없습니다 / `GIFT400_2` 편지는 1자에서 200자까지 쓸 수 있습니다 / `GIFT400_7` 사진은 10MB 이하 이미지 파일만 올릴 수 있습니다(외부 URL 포함) / `GIFT400_8` 편지지 색상 형식을 확인해주세요 / `REC400_3` 추천 정보를 찾을 수 없습니다(남의 추천 ID) / `FRIEND400_1` 이름은 1자에서 20자까지 입력해주세요",

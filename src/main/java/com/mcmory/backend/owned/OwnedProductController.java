@@ -14,6 +14,7 @@ import com.mcmory.backend.global.apiPayload.CustomResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,16 +46,43 @@ public class OwnedProductController {
 		this.currentMember = currentMember;
 	}
 
-	public record RegisterRequest(String serial) {
+	@Schema(name = "OwnedRegisterRequest", description = "데모 시리얼로 보유 제품을 등록하는 요청임(20번).")
+	public record RegisterRequest(@Schema(
+			description = "시드 카탈로그의 데모 일련번호임. **대소문자 무시 완전 일치만 등록됨** — 부분 일치는 지원하지 않음. 서버가 trim 후 대문자로 정규화해 저장함. 시연용 더미 데이터 조회이며 정품 인증이 아님(ADR-004, NFR-004). 빈 값이나 공백만이면 `OWNED400_1`, 일치하는 시드 제품이 없으면 `OWNED404_1`, 같은 상품을 `EXTERNAL` 출처로 이미 등록했으면 `OWNED409_1`임",
+			example = "MX2024A031", requiredMode = Schema.RequiredMode.REQUIRED) String serial) {
 	}
 
-	public record IdRequest(Long id) {
+	@Schema(name = "OwnedIdRequest",
+			description = "보유 제품 삭제 요청임(21번). **경로가 아니라 요청 본문으로 id를 받음** — DELETE에 본문이 필요하므로 클라이언트 설정에 주의할 것.")
+	public record IdRequest(@Schema(
+			description = "삭제할 보유 제품 id임(19번 목록의 `id`). 누락, 없는 id, 남의 제품, 이미 삭제된 제품은 존재 여부를 노출하지 않도록 모두 `OWNED404_2`로 동일하게 응답함",
+			example = "1", requiredMode = Schema.RequiredMode.REQUIRED) Long id) {
 	}
 
-	public record ProductView(String name, String emoji) {
+	@Schema(name = "OwnedProductView", description = "보유 제품에 연결된 상품의 표시용 요약임.")
+	public record ProductView(
+			@Schema(description = "상품명임", example = "Tracy 비세토스 크로스바디",
+					requiredMode = Schema.RequiredMode.REQUIRED) String name,
+			@Schema(description = "프로토타입은 상품 이미지 대신 이모지를 씀. 상품에 이미지가 없으면 선물 상자 이모지로 대체함", example = "👜",
+					requiredMode = Schema.RequiredMode.REQUIRED) String emoji) {
 	}
 
-	public record OwnedView(Long id, String source, String serialMemo, LocalDate createdAt, ProductView product) {
+	@Schema(name = "OwnedView", description = "보유 제품 목록의 한 행임(19번).")
+	public record OwnedView(
+			@Schema(description = "보유 제품 id임. 21번 삭제와 32번 관리 방법 조회에 그대로 씀", example = "1",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+			@Schema(description = "등록 출처임. `GIFT`(우리 서비스로 받은 선물)와 `EXTERNAL`(사용자가 데모 시리얼로 직접 등록) **2종**임",
+					example = "EXTERNAL", allowableValues = {
+							"GIFT", "EXTERNAL" },
+					requiredMode = Schema.RequiredMode.REQUIRED) String source,
+			@Schema(description = "등록에 쓴 일련번호 메모임. **검증값이 아니라 메모임**(ADR-004) — 정품 여부를 뜻하지 않음. `GIFT` 출처는 시리얼이 없어 `null`임",
+					example = "MX2024A031", nullable = true,
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String serialMemo,
+			@Schema(description = "등록 일자임. **시각이 아니라 날짜(`yyyy-MM-dd`)임**", example = "2026-08-11", type = "string",
+					format = "date", nullable = true,
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) LocalDate createdAt,
+			@Schema(description = "연결된 상품 요약임. **상품 연결이 없거나 상품이 삭제된 경우 `null`이라 프론트에서 null 방어가 필요함**", nullable = true,
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) ProductView product){
 	}
 
 	@Operation(summary = "보유 제품 목록 (#19)",
@@ -178,7 +206,18 @@ public class OwnedProductController {
 	private static final List<String> CARE_GUIDE_DEFAULT = List.of("직사광선과 습기를 피해 보관해주세요", "오염은 마른 천으로 가볍게 닦아주세요",
 			"심한 오염이나 손상은 매장에 문의해주세요");
 
-	public record CareGuide(Long ownedProductId, String productName, String category, List<String> items) {
+	@Schema(name = "OwnedCareGuide",
+			description = "카테고리별 관리 방법 응답임(32번). **시연용 일반 안내이지 MCM 공식 관리 지침이 아님**(NFR-004) — 화면에도 그렇게 표기할 것.")
+	public record CareGuide(
+			@Schema(description = "조회한 보유 제품 id임(경로 변수 `id`와 같음)", example = "1",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long ownedProductId,
+			@Schema(description = "연결된 상품명임", example = "Tracy 비세토스 크로스바디",
+					requiredMode = Schema.RequiredMode.REQUIRED) String productName,
+			@Schema(description = "상품 카테고리임. 시드 기준 `가방`·`지갑`·`가죽 소품` **3종**이고, 그 밖의 값은 오류 대신 공통 기본 안내를 줌. **상품 카테고리이지 취향 색상이나 가방 디자인 축이 아님**",
+					example = "가방", requiredMode = Schema.RequiredMode.REQUIRED) String category,
+			@Schema(description = "관리 안내 문구 목록임. 카테고리별 3문장, 그 밖의 카테고리는 공통 기본 3문장임",
+					example = "[\"쓰고 난 뒤 부드러운 마른 천으로 표면을 닦아주세요\"]",
+					requiredMode = Schema.RequiredMode.REQUIRED) List<String> items) {
 	}
 
 	@Operation(summary = "카테고리별 관리 방법 (#32)",

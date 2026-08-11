@@ -10,6 +10,7 @@ import com.mcmory.backend.global.apiPayload.CustomResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -36,16 +37,34 @@ public class FriendController {
 		this.currentMember = currentMember;
 	}
 
-	public record CreateRequest(String name, String phone) {
+	@Schema(name = "FriendCreateRequest", description = "친구 등록 요청임(명세서 5.5 #16)")
+	public record CreateRequest(
+			@Schema(description = "친구 이름. 앞뒤 공백을 제거한 뒤 1자 이상 20자 이하여야 함(컬럼이 VARCHAR(20)임). 벗어나면 FRIEND400_1임",
+					example = "김민지", requiredMode = Schema.RequiredMode.REQUIRED) String name,
+			@Schema(description = "친구 전화번호. `010`으로 시작하는 10에서 11자리이며 하이픈과 공백은 허용하되 숫자만 저장함(ADR-008). 형식이 어긋나면 FRIEND400_2, 같은 회원이 같은 번호를 다시 등록하면 FRIEND409_1임",
+					example = "010-1234-5678", requiredMode = Schema.RequiredMode.REQUIRED) String phone) {
 	}
 
-	public record IdRequest(Long id) {
+	@Schema(name = "FriendIdRequest", description = "친구 삭제 요청임(명세서 5.5 #18)")
+	public record IdRequest(@Schema(
+			description = "삭제할 친구의 id. 목록 조회(`GET /api/v1/friends`)의 `result.list[].id`임. 없는 친구와 남의 친구를 같은 FRIEND404_1로 다룸 — 갈라주면 id를 순번으로 훑어 남의 친구 존재 여부를 알아낼 수 있음",
+			example = "1", requiredMode = Schema.RequiredMode.REQUIRED) Long id) {
 	}
 
-	public record TasteRequest(Long id, String tasteSummary) {
+	@Schema(name = "FriendTasteRequest", description = "발송자가 고른 취향 요약을 친구에게 귀속하는 요청임(명세서 5.5 #17, FR-011, ADR-009)")
+	public record TasteRequest(
+			@Schema(description = "취향을 귀속할 친구의 id. 없는 친구와 남의 친구는 FRIEND404_1임", example = "1",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+			@Schema(description = "취향 요약 문자열임. **선택임 — 빠지면 빈 요약으로 저장함**(값 없음을 실패로 보지 않고 재호출이 안전해야 하기 때문임). 화면이 고른 값을 사람이 읽는 한 줄로 이어 붙인 것이며 서버가 값 집합을 검증하지 않음. 취향 색상 6종(코냑·블랙·베이지·핑크·골드·그레이)과 옷 스타일 6종(캐주얼·미니멀·스트릿·클래식·러블리·포멀)과 가방 4종(숄더백·토트백·크로스바디·백팩)이 재료임. **이 색상 축은 편지지 색 4종(GOLD·BLACK·BEIGE·PINK)과도 상품 색상과도 다른 축이라 섞지 말 것.** 함정 — 수신자 본인이 답한 취향(`source`가 `INVITE_ANSWER`)이 이미 있으면 이 값을 저장하지 않고 200에 `updated`를 false로 돌려줌",
+					example = "블랙, 미니멀", requiredMode = Schema.RequiredMode.NOT_REQUIRED) String tasteSummary) {
 	}
 
-	public record UpdateRequest(String name, String phone) {
+	@Schema(name = "FriendUpdateRequest", description = "친구 수정 요청임. **이름만 바뀜**(명세서 5.5 #31, FR-005)")
+	public record UpdateRequest(
+			@Schema(description = "바꿀 이름. 앞뒤 공백 제거 후 1자 이상 20자 이하여야 하며 벗어나면 FRIEND400_1임", example = "김민지",
+					requiredMode = Schema.RequiredMode.REQUIRED) String name,
+			@Schema(description = "현재 전화번호임. **바꿀 값이 아니라 대조용이라 숫자가 같아야 함** — 하이픈 표기 차이는 허용하고 숫자가 다르면 FRIEND409_2로 거절하고 새 등록을 안내함(번호가 바뀌면 다른 사람으로 봄). 빼면 FRIEND400_2임",
+					example = "010-1234-5678", requiredMode = Schema.RequiredMode.REQUIRED) String phone) {
 	}
 
 	@Operation(summary = "친구 목록 조회",

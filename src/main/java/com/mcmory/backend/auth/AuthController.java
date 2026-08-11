@@ -15,6 +15,7 @@ import com.mcmory.backend.global.apiPayload.CustomResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -51,7 +52,13 @@ public class AuthController {
 		this.tokens = tokens;
 	}
 
-	public record LoginRequest(String phone, String password) {
+	public record LoginRequest(
+			@Schema(description = "전화번호임. **로그인 ID가 전화번호임**(ADR-013 결정 1) — 이메일이 아님. "
+					+ "`010` 시작 10에서 11자리 숫자이며 하이픈을 넣어 보내도 서버가 숫자만 남겨 대조함", example = "01012345678",
+					requiredMode = Schema.RequiredMode.REQUIRED) String phone,
+			@Schema(description = "비밀번호임. 가입 때 규칙은 영문과 숫자 포함 8자 이상임. "
+					+ "함정: 전화번호와 비밀번호 중 무엇이 틀렸는지 응답이 가르지 않고 `AUTH401_2` 하나로 옴 — 가입 여부를 알려주지 않기 위함임",
+					example = "mcmory1234", requiredMode = Schema.RequiredMode.REQUIRED) String password) {
 	}
 
 	/**
@@ -60,13 +67,36 @@ public class AuthController {
 	 * 동의 필드가 원시형 boolean이 아니라 Boolean인 이유는 Jackson이 **빠진 원시형 필드를 파싱 오류로 다루기** 때문임 —
 	 * smsOptIn을 생략한 요청이 우리 문구가 아니라 스프링 기본 400을 받았음(실측). 빠진 값은 여기서 false로 접음.
 	 */
-	public record SignupRequest(String name, String phone, String password, LocalDate birthDate, String gender,
-			Boolean privacyAgreed, Boolean smsOptIn) {
+	public record SignupRequest(
+			@Schema(description = "이름임. 앞뒤 공백을 제거해 저장하며 1자 이상 20자 이하임(컬럼이 `VARCHAR(20)`). 벗어나면 `MEMBER400_1`임",
+					example = "권석", requiredMode = Schema.RequiredMode.REQUIRED) String name,
+			@Schema(description = "전화번호임. 로그인 ID로도 쓰임. `010` 시작 10에서 11자리이며 하이픈을 넣어 보내도 되지만 "
+					+ "**숫자만 저장함**(ADR-008). 형식이 어긋나면 `MEMBER400_2`, 이미 가입된 번호면 `MEMBER409_1`임",
+					example = "01012345678", requiredMode = Schema.RequiredMode.REQUIRED) String phone,
+			@Schema(description = "비밀번호임. **영문과 숫자를 모두 포함해 8자 이상**이어야 함. 어긋나면 `MEMBER400_3`임", example = "mcmory1234",
+					requiredMode = Schema.RequiredMode.REQUIRED) String password,
+			@Schema(description = "생년월일임. 형식은 `yyyy-MM-dd`임. 형식이 어긋나면 `MEMBER400_4`, "
+					+ "**만 14세 미만이면 `MEMBER400_5`**로 거부함", example = "2000-03-14", format = "date",
+					requiredMode = Schema.RequiredMode.REQUIRED) LocalDate birthDate,
+			@Schema(description = "성별임. `MALE`·`FEMALE`·`NONE` 셋 중 하나이며 그 밖은 `MEMBER400_6`임", example = "NONE",
+					allowableValues = {
+							"MALE", "FEMALE", "NONE" },
+					requiredMode = Schema.RequiredMode.REQUIRED) String gender,
+			@Schema(description = "개인정보 수집과 이용 동의임. **필수 동의라 `true`가 아니면 `CONSENT400_1`**임(ADR-002 개정)",
+					example = "true", requiredMode = Schema.RequiredMode.REQUIRED) Boolean privacyAgreed,
+			@Schema(description = "SMS 수신 동의임. **선택 동의라 생략할 수 있고 생략하면 false로 접힘** — 미동의가 가입을 막지 않음. "
+					+ "함정: 타입이 원시형 `boolean`이 아니라 `Boolean`인 이유는 Jackson이 빠진 원시형 필드를 파싱 오류로 다뤄, "
+					+ "생략한 요청이 우리 문구가 아니라 스프링 기본 400으로 떨어졌기 때문임(실측)", example = "false",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) Boolean smsOptIn){
+	}
 
-		boolean agreed(Boolean value) {
-			return Boolean.TRUE.equals(value);
-		}
-
+	/**
+	 * 빠진 동의 필드를 false로 접음. SignupRequest 안에 두면 record 본문이 비지 않아, 필드 설명을 붙여 헤더가 여러 줄이 된 뒤로
+	 * 포매터가 내는 `){`를 checkstyle WhitespaceAround가 반려함(allowEmptyTypes가 빈 본문만 봐줌). 동작은
+	 * 그대로임.
+	 */
+	private static boolean agreed(Boolean value) {
+		return Boolean.TRUE.equals(value);
 	}
 
 	/** FR-001 회원가입임. 성공하면 로그인과 같은 응답과 같은 쿠키를 줌 — 가입 직후 로그인 상태로 들어감. */
@@ -117,7 +147,7 @@ public class AuthController {
 	public ResponseEntity<CustomResponse<Map<String, Object>>> signup(@RequestBody SignupRequest request) {
 		AuthService.LoggedIn result = this.authService
 			.signup(new SignupCommand(request.name(), request.phone(), request.password(), request.birthDate(),
-					request.gender(), request.agreed(request.privacyAgreed()), request.agreed(request.smsOptIn())));
+					request.gender(), agreed(request.privacyAgreed()), agreed(request.smsOptIn())));
 
 		return ResponseEntity.ok()
 			.headers(this.cookies.headersWith(this.cookies.accessCookie(result.accessToken(), Duration.ofDays(1)),

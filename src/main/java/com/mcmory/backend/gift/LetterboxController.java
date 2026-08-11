@@ -14,6 +14,7 @@ import com.mcmory.backend.global.apiPayload.CustomResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,8 +49,26 @@ public class LetterboxController {
 		this.currentMember = currentMember;
 	}
 
-	public record SentView(Long id, String token, String friendName, String nickname, String productName, String emoji,
-			String status, LocalDateTime openedAt) {
+	public record SentView(
+			@Schema(description = "선물 id임", example = "12", requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+			@Schema(description = "초대 토큰임. `GET /api/v1/g/{token}`(명세서 #12) 경로에 그대로 실음",
+					example = "k3n8pq2wz7ta5vh0jr4bmx91", requiredMode = Schema.RequiredMode.REQUIRED) String token,
+			@Schema(description = "받는 친구 이름임. **삭제된 친구는 `\"삭제된 친구\"`로 나감**(ADR-003 개인정보 즉시 파기 — 이름과 번호가 DB에서 NULL이 됨). "
+					+ "선택 — 친구 행 자체를 찾지 못하면 `null`임", example = "김민지",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String friendName,
+			@Schema(description = "수신자에게 보이는 발신자 익명 닉네임임(형용사 더하기 호저). ADR-001에 따라 발송자 실명은 어디에도 싣지 않음",
+					example = "다정한 호저", requiredMode = Schema.RequiredMode.REQUIRED) String nickname,
+			@Schema(description = "선물한 상품명임. 선택 — 연결된 상품이 없으면 `null`임", example = "비세토스 카드지갑",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String productName,
+			@Schema(description = "상품 이모지임. 연결된 상품이 없으면 기본값 `🎁`이 나감", example = "👛",
+					requiredMode = Schema.RequiredMode.REQUIRED) String emoji,
+			@Schema(description = "선물 상태임. `SENT`(발송) 또는 `OPENED`(수신자가 열람) 둘뿐임. ADR-011에 따라 역방향 전이는 없음",
+					example = "OPENED", allowableValues = {
+							"SENT", "OPENED" },
+					requiredMode = Schema.RequiredMode.REQUIRED) String status,
+			@Schema(description = "수신자의 **최초** 열람 시각임(재방문은 갈아치우지 않음). 선택 — 아직 열지 않았으면 `null`임. "
+					+ "발송분에서 이 값이 있는 건수가 `unread`임", example = "2026-08-11T14:03:21",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) LocalDateTime openedAt){
 	}
 
 	/**
@@ -58,8 +77,26 @@ public class LetterboxController {
 	 *
 	 * letterBody도 없음. 본문은 동의 게이트를 지나는 `/api/v1/g/{token}`에서만 제공함(FR-015).
 	 */
-	public record ReceivedView(Long id, String token, String nickname, String productName, String emoji, String status,
-			LocalDateTime sentAt, LocalDateTime openedAt) {
+	public record ReceivedView(
+			@Schema(description = "선물 id임", example = "7", requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+			@Schema(description = "초대 토큰임. **편지 본문을 보려면 이 토큰으로 `GET /api/v1/g/{token}`(명세서 #12)을 거쳐야 함** — 목록에는 본문이 없음(FR-015)",
+					example = "w9r1tv4l6zq8pd3ncm07skb2", requiredMode = Schema.RequiredMode.REQUIRED) String token,
+			@Schema(description = "발신자 익명 닉네임임(형용사 더하기 호저). **수신분에 나가는 발신자 정보는 이것 하나뿐임**(ADR-001) — "
+					+ "`senderMemberId`·발송자 실명·`friendId`·`friend.name`은 싣지 않음", example = "느긋한 호저",
+					requiredMode = Schema.RequiredMode.REQUIRED) String nickname,
+			@Schema(description = "받은 상품명임. 선택 — 연결된 상품이 없으면 `null`임", example = "비세토스 미니백",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String productName,
+			@Schema(description = "상품 이모지임. 연결된 상품이 없으면 기본값 `🎁`이 나감", example = "👜",
+					requiredMode = Schema.RequiredMode.REQUIRED) String emoji,
+			@Schema(description = "선물 상태임. `SENT`(발송) 또는 `OPENED`(내가 열람) 둘뿐임. ADR-011에 따라 역방향 전이는 없음", example = "SENT",
+					allowableValues = {
+							"SENT", "OPENED" },
+					requiredMode = Schema.RequiredMode.REQUIRED) String status,
+			@Schema(description = "발송 시각임", example = "2026-08-10T09:12:00",
+					requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime sentAt,
+			@Schema(description = "내가 **최초로** 연 시각임(재방문은 갈아치우지 않음). 선택 — 아직 열지 않았으면 `null`이고, "
+					+ "수신분에서 `null`인 건수가 `receivedUnopened`임", example = "2026-08-11T14:03:21", nullable = true,
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) LocalDateTime openedAt){
 	}
 
 	@GetMapping
@@ -86,7 +123,7 @@ public class LetterboxController {
 					    "sent": [
 					      {
 					        "id": 12,
-					        "token": "aB3xY9kQ7mN2",
+					        "token": "k3n8pq2wz7ta5vh0jr4bmx91",
 					        "friendName": "김민지",
 					        "nickname": "다정한 호저",
 					        "productName": "비세토스 카드지갑",
@@ -99,7 +136,7 @@ public class LetterboxController {
 					    "received": [
 					      {
 					        "id": 7,
-					        "token": "pQ8wZ1rT4vL6",
+					        "token": "w9r1tv4l6zq8pd3ncm07skb2",
 					        "nickname": "느긋한 호저",
 					        "productName": "비세토스 미니백",
 					        "emoji": "👜",

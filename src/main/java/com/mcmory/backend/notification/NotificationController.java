@@ -10,6 +10,7 @@ import com.mcmory.backend.global.apiPayload.CustomResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +38,26 @@ public class NotificationController {
 		this.currentMember = currentMember;
 	}
 
-	public record NotificationView(Long id, String type, Long giftId, LocalDateTime createdAt, LocalDateTime readAt) {
+	/** 명세서 5.8 #26의 `items` 원소임. 응답 전용이라 요청 본문으로 쓰이지 않음. */
+	@Schema(name = "NotificationView", description = "알림 한 건임. 명세서 5.8 #26의 `items` 원소이며 응답 전용임")
+	public record NotificationView(
+			@Schema(description = "알림 식별자임. `items`는 이 값의 내림차순으로 고정 정렬되며 페이지네이션이 없어 전체가 한 번에 옴", example = "12",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+			@Schema(description = "알림 종류임. `GIFT_ARRIVED`는 수신자에게, 나머지는 발송자에게 감. "
+					+ "**접두사가 `CHANGE_REQ_`면 뒷부분이 옵션 변경 문의 사유임** — 사유 전용 필드 없이 타입에 실은 결정이라 "
+					+ "프론트가 이 접두사로 갈라 읽어야 함. 사유 4종은 SIZE·COLOR·ALREADY_OWNED·ETC임", example = "GIFT_OPENED",
+					allowableValues = {
+							"GIFT_ARRIVED", "GIFT_OPENED", "CHANGE_REQ_SIZE", "CHANGE_REQ_COLOR",
+							"CHANGE_REQ_ALREADY_OWNED", "CHANGE_REQ_ETC" },
+					requiredMode = Schema.RequiredMode.REQUIRED) String type,
+			@Schema(description = "알림이 가리키는 선물의 식별자임. 알림을 눌렀을 때 이동할 대상을 잇는 데 씀", example = "7",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long giftId,
+			@Schema(description = "알림 생성 시각임. 오프셋 없는 로컬 시각 문자열이라 프론트가 표준시를 붙여 해석하지 말 것",
+					example = "2026-08-11T10:20:30",
+					requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdAt,
+			@Schema(description = "읽은 시각임. **`null`이면 미읽음이고 이 개수가 곧 `unread`임.** "
+					+ "개별 읽음 경로가 없어 #27 전체 읽음으로만 채워지므로 선택임", example = "2026-08-11T09:30:00", nullable = true,
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) LocalDateTime readAt){
 	}
 
 	@Operation(summary = "알림 목록과 미읽음 수 조회",

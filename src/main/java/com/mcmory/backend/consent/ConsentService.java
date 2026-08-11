@@ -9,6 +9,7 @@ import com.mcmory.backend.global.apiPayload.code.ConsentErrorCode;
 import com.mcmory.backend.global.apiPayload.exception.CustomException;
 import com.mcmory.backend.member.MemberRepository;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,8 +35,23 @@ public class ConsentService {
 	 * 항목 하나의 현재 상태임. needsAction이 참이면 화면이 다시 물어야 함 — 필수인데 동의가 없거나, 동의했지만 그때의 버전이 지금 버전과
 	 * 다른 경우임.
 	 */
-	public record ConsentStatus(String type, String label, boolean required, boolean agreed, String agreedVersion,
-			String currentVersion, LocalDateTime decidedAt, boolean needsAction) {
+	public record ConsentStatus(
+			@Schema(description = "동의 항목 코드임. `PRIVACY`(가입 필수)와 `SMS`(선택) 둘임", example = "PRIVACY",
+					requiredMode = Schema.RequiredMode.REQUIRED) String type,
+			@Schema(description = "화면에 그대로 쓰는 항목 이름임", example = "개인정보 수집과 이용",
+					requiredMode = Schema.RequiredMode.REQUIRED) String label,
+			@Schema(description = "가입 필수 항목인지임. 참이면 철회할 수 없음(`CONSENT400_3`)", example = "true",
+					requiredMode = Schema.RequiredMode.REQUIRED) boolean required,
+			@Schema(description = "현재 동의 여부임. 이력의 마지막 행 기준이고 이력이 아예 없으면 false임", example = "true",
+					requiredMode = Schema.RequiredMode.REQUIRED) boolean agreed,
+			@Schema(description = "동의를 남긴 시점의 약관 버전임. 이력이 없으면 null이라 선택임", example = "v1",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String agreedVersion,
+			@Schema(description = "지금 유효한 약관 버전임. `agreedVersion`과 다르면 문안이 바뀐 것이라 다시 물음", example = "v1",
+					requiredMode = Schema.RequiredMode.REQUIRED) String currentVersion,
+			@Schema(description = "마지막으로 동의 또는 철회를 기록한 시각임. 이력이 없으면 null이라 선택임", example = "2026-08-09T01:23:45",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) LocalDateTime decidedAt,
+			@Schema(description = "재동의가 필요한지임. 필수인데 동의가 없거나, 동의했지만 그때 버전이 지금 버전과 다르면 참임. 선택 항목은 미동의가 정상 상태라 항상 거짓임",
+					example = "false", requiredMode = Schema.RequiredMode.REQUIRED) boolean needsAction) {
 	}
 
 	@Transactional(readOnly = true)

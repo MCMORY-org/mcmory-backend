@@ -9,6 +9,7 @@ import com.mcmory.backend.global.apiPayload.CustomResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,10 +41,22 @@ public class RecommendController {
 	 *
 	 * friendId는 선택임. 오면 그 친구의 취향을 점수에 반영하고, 없으면 이 필드가 생기기 전과 결과가 같음.
 	 */
-	public record RecommendRequest(String relation, Integer minBudget, Integer maxBudget, Long friendId) {
+	public record RecommendRequest(@Schema(
+			description = "관계 태그. `연인`·`친구`·`부모님`·`스승/제자` 넷 중 하나임. 그 밖의 값은 `REC400_4`임. 비우면 `친구`로 둠(화면 기본 선택값과 같음)",
+			example = "연인", allowableValues = {
+					"연인", "친구", "부모님", "스승/제자" },
+			requiredMode = Schema.RequiredMode.NOT_REQUIRED) String relation,
+			@Schema(description = "최소 예산. **단위는 만원임** — `50`이 50만원임. 원 단위로 보내면 결과가 비거나 엉뚱해짐. 음수는 `REC400_4`임. 비우면 `0`으로 둠",
+					example = "50", requiredMode = Schema.RequiredMode.NOT_REQUIRED) Integer minBudget,
+			@Schema(description = "최대 예산. **단위는 만원임** — `150`이 150만원임. 최소 예산보다 작으면 `REC400_1`임. 음수는 `REC400_4`임. 비우면 `0`으로 둠",
+					example = "150", requiredMode = Schema.RequiredMode.NOT_REQUIRED) Integer maxBudget,
+			@Schema(description = "취향을 반영할 친구 id. **선택임** — 안 보내면 이 필드가 생기기 전과 결과가 완전히 같음. 없거나 남의 친구, 삭제된 친구면 `FRIEND404_1`임(이 필드를 보내는 경우에만 옴)",
+					example = "101", requiredMode = Schema.RequiredMode.NOT_REQUIRED) Long friendId){
 	}
 
-	public record SaveRequest(Long friendId) {
+	public record SaveRequest(@Schema(
+			description = "귀속할 친구 id. 같은 친구로 다시 불러도 200이고 행이 늘지 않음. 다른 친구로 바꾸려 하면 `REC400_2`임. 없거나 남의 친구, 삭제된 친구면 `FRIEND404_1`임",
+			example = "101", requiredMode = Schema.RequiredMode.REQUIRED) Long friendId) {
 	}
 
 	/** FR-009 추천 생성. 회원만 쓰는 발송자 흐름임. 응답에 recommendationId가 붙되 results 형태는 불변임. */

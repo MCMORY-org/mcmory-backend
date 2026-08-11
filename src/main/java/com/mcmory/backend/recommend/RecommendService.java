@@ -14,6 +14,7 @@ import com.mcmory.backend.friend.FriendRepository;
 import com.mcmory.backend.product.Product;
 import com.mcmory.backend.product.ProductRepository;
 import com.mcmory.backend.taste.TasteProfileRepository;
+import io.swagger.v3.oas.annotations.media.Schema;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -71,21 +72,58 @@ public class RecommendService {
 
 	}
 
-	public record ProductView(Long id, String name, String emoji, int price, String color) {
+	public record ProductView(
+			@Schema(description = "시드 카탈로그 상품 id", example = "1", requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+			@Schema(description = "상품명. 스냅샷 재조회에서도 **현재 값임** — 동결 대상이 아님", example = "Tracy 비세토스 크로스바디",
+					requiredMode = Schema.RequiredMode.REQUIRED) String name,
+			@Schema(description = "상품 이모지", example = "👜", requiredMode = Schema.RequiredMode.REQUIRED) String emoji,
+			@Schema(description = "가격. **단위는 원임** — 요청 예산의 만원 단위와 다름. 값이 없으면 `0`임. 스냅샷에서도 현재 값임", example = "890000",
+					requiredMode = Schema.RequiredMode.REQUIRED) int price,
+			@Schema(description = "상품 색상. **취향 색상 6종·편지지 색 4종과 다른 축임** — 시드에 카키·브라운이 있어 6종 밖임. 삭제된 상품이면 `null`임",
+					example = "블랙", requiredMode = Schema.RequiredMode.NOT_REQUIRED) String color) {
 	}
 
-	public record Result(ProductView product, String reasonType, String reason) {
+	public record Result(
+			@Schema(description = "추천된 상품", requiredMode = Schema.RequiredMode.REQUIRED) ProductView product,
+			@Schema(description = "근거 유형. `PERSONAL`과 `GENERAL` 둘뿐이고 **첫 항목만 PERSONAL이 될 수 있음**(ADR-009)",
+					example = "PERSONAL", allowableValues = {
+							"PERSONAL", "GENERAL" },
+					requiredMode = Schema.RequiredMode.REQUIRED) String reasonType,
+			@Schema(description = "근거 문구. `GENERAL`이면 고정 문구임", example = "블랙 계열을 좋아하신다고 하셔서 골랐어요",
+					requiredMode = Schema.RequiredMode.REQUIRED) String reason){
 	}
 
 	/** 저장된 결과를 읽을 때는 순위를 함께 돌려줌 — 재조회의 요점이 순위 동결이기 때문임. */
-	public record StoredResult(ProductView product, String reasonType, String reason, int rankNo) {
+	public record StoredResult(
+			@Schema(description = "추천된 상품", requiredMode = Schema.RequiredMode.REQUIRED) ProductView product,
+			@Schema(description = "근거 유형. `PERSONAL`과 `GENERAL` 둘뿐이고 **첫 항목만 PERSONAL이 될 수 있음**(ADR-009)",
+					example = "PERSONAL", allowableValues = {
+							"PERSONAL", "GENERAL" },
+					requiredMode = Schema.RequiredMode.REQUIRED) String reasonType,
+			@Schema(description = "근거 문구. 생성 시점 값을 그대로 돌려줌 — 재계산하지 않음", example = "블랙 계열을 좋아하신다고 하셔서 골랐어요",
+					requiredMode = Schema.RequiredMode.REQUIRED) String reason,
+			@Schema(description = "생성 시점에 동결된 순위. `1`부터 시작하고 오름차순으로 옴", example = "1",
+					requiredMode = Schema.RequiredMode.REQUIRED) int rankNo){
 	}
 
-	public record Snapshot(Long recommendationId, JsonNode context, Long savedFriendId, LocalDateTime createdAt,
-			List<StoredResult> results) {
+	public record Snapshot(
+			@Schema(description = "추천 id", example = "3",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long recommendationId,
+			@Schema(description = "생성 시점의 조건 JSON. 키는 `relation`·`minBudget`·`maxBudget`과, 보냈을 때만 붙는 `friendId`임. "
+					+ "**예산 단위는 요청과 같은 만원임**", requiredMode = Schema.RequiredMode.REQUIRED) JsonNode context,
+			@Schema(description = "귀속된 친구 id. 아직 귀속하지 않았으면 `null`임 — 귀속은 #10이 함", example = "101",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) Long savedFriendId,
+			@Schema(description = "추천 생성 시각", example = "2026-08-11T10:20:30",
+					requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdAt,
+			@Schema(description = "동결된 추천 결과. 순위 오름차순이고 최대 3건임",
+					requiredMode = Schema.RequiredMode.REQUIRED) List<StoredResult> results) {
 	}
 
-	public record Created(Long recommendationId, List<Result> results) {
+	public record Created(
+			@Schema(description = "생성된 추천 id. 재조회(#9)와 선물 발송(#11)이 이 값을 씀", example = "3",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long recommendationId,
+			@Schema(description = "추천 결과. 점수 내림차순이고 최대 3건임. 예산에 맞는 상품이 없으면 전체 카탈로그에서 고름",
+					requiredMode = Schema.RequiredMode.REQUIRED) List<Result> results) {
 	}
 
 	/**
