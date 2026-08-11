@@ -9,6 +9,8 @@ public enum FriendErrorCode implements BaseErrorCode {
 
 	INVALID_NAME(HttpStatus.BAD_REQUEST, "FRIEND400_1", "이름은 1자에서 20자까지 입력해주세요"),
 	INVALID_PHONE(HttpStatus.BAD_REQUEST, "FRIEND400_2", "전화번호 형식을 확인해주세요"),
+	PRIVACY_REQUIRED(HttpStatus.BAD_REQUEST, "FRIEND400_3", "개인정보 수집 동의가 필요합니다"),
+	INVALID_ANSWER(HttpStatus.BAD_REQUEST, "FRIEND400_4", "취향을 하나 이상 선택해주세요"),
 	NOT_FOUND(HttpStatus.NOT_FOUND, "FRIEND404_1", "친구 정보를 찾을 수 없습니다"),
 	DUPLICATE_PHONE(HttpStatus.CONFLICT, "FRIEND409_1", "이미 등록한 친구의 전화번호입니다"),
 	PHONE_NOT_EDITABLE(HttpStatus.CONFLICT, "FRIEND409_2", "전화번호가 다른 친구는 새로 등록해주세요");

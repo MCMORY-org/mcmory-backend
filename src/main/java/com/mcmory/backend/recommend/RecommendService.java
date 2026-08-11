@@ -60,13 +60,14 @@ public class RecommendService {
 	}
 
 	/**
-	 * 추천 점수에 쓰는 취향임. 정식 문항 집합은 기능명세서 4.5의 미결이라 색상과 스타일 둘만 읽음.
+	 * 추천 점수에 쓰는 취향임. 다중 선택이라 목록이고 **비면 취향이 없는 것과 같음.**
 	 *
-	 * 발송자 대리 입력(OWNER_INPUT)은 summary만 써서 점수에 영향이 없음 — 지금 두 키를 채우는 것은 시드뿐임.
+	 * 색상과 스타일 둘만 읽음 — 가방 디자인은 시드 상품에 대응 축이 없음. 채우는 것은 시드와 수신자 설문뿐이고 발송자 대리
+	 * 입력(OWNER_INPUT)은 summary만 써서 영향이 없음.
 	 */
-	private record TasteAnswers(String color, String style) {
+	private record TasteAnswers(List<String> colors, List<String> styles) {
 
-		static final TasteAnswers NONE = new TasteAnswers(null, null);
+		static final TasteAnswers NONE = new TasteAnswers(List.of(), List.of());
 
 	}
 
@@ -176,20 +177,34 @@ public class RecommendService {
 		}
 		try {
 			JsonNode node = this.objectMapper.readTree(answersJson);
-			return new TasteAnswers(textOrNull(node, "color"), textOrNull(node, "style"));
+			return new TasteAnswers(valuesOf(node, "colors", "color"), valuesOf(node, "styles", "style"));
 		}
 		catch (Exception ex) {
 			return TasteAnswers.NONE;
 		}
 	}
 
-	private String textOrNull(JsonNode node, String key) {
-		JsonNode value = node.get(key);
-		if (value == null || value.isNull()) {
-			return null;
+	/** 복수 키와 단수 키를 **둘 다** 읽음. 복수는 설문 제출이, 단수는 시드가 씀 — 단수를 빼면 시드 취향이 사라짐. */
+	private List<String> valuesOf(JsonNode node, String pluralKey, String singularKey) {
+		List<String> values = new ArrayList<>();
+
+		JsonNode plural = node.get(pluralKey);
+		if (plural != null && plural.isArray()) {
+			plural.forEach((element) -> addIfPresent(values, element));
 		}
-		String text = value.asString();
-		return text.isBlank() ? null : text;
+		addIfPresent(values, node.get(singularKey));
+
+		return values;
+	}
+
+	private void addIfPresent(List<String> values, JsonNode node) {
+		if (node == null || node.isNull()) {
+			return;
+		}
+		String text = node.asString();
+		if (!text.isBlank() && !values.contains(text)) {
+			values.add(text);
+		}
 	}
 
 	/**
@@ -197,10 +212,11 @@ public class RecommendService {
 	 */
 	private int tasteScore(Product product, List<String> tags, TasteAnswers taste) {
 		int score = 0;
-		if (taste.color() != null && taste.color().equals(product.getColor())) {
+		// 다중 선택은 축당 한 번만 가산함. 맞은 개수만큼 주면 많이 고른 사람이 관계 근거를 밀어냄
+		if (taste.colors().contains(product.getColor())) {
 			score += 2;
 		}
-		if (taste.style() != null && tags.contains(taste.style())) {
+		if (taste.styles().stream().anyMatch(tags::contains)) {
 			score += 2;
 		}
 		return score;
@@ -208,13 +224,11 @@ public class RecommendService {
 
 	/** 근거 문구에 쓸 취향임. 색과 스타일이 둘 다 맞아도 문구에는 하나만 싣고 색을 먼저 씀. 일치가 없으면 null이라 관계 근거로 떨어짐. */
 	private String tasteHitOf(Product product, List<String> tags, TasteAnswers taste) {
-		if (taste.color() != null && taste.color().equals(product.getColor())) {
-			return taste.color() + " 계열";
+		if (taste.colors().contains(product.getColor())) {
+			return product.getColor() + " 계열";
 		}
-		if (taste.style() != null && tags.contains(taste.style())) {
-			return taste.style() + " 스타일";
-		}
-		return null;
+		// **실제로 맞은** 스타일을 실음. 고른 것 중 첫 값을 쓰면 맞지도 않은 스타일이 근거로 찍힘
+		return taste.styles().stream().filter(tags::contains).findFirst().map((style) -> style + " 스타일").orElse(null);
 	}
 
 	/** 입력 예산 단위는 만원임(화면 표기 그대로). 원 단위 환산은 컨트롤러가 아니라 여기서 함. */

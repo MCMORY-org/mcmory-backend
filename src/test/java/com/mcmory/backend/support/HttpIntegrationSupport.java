@@ -106,6 +106,12 @@ public abstract class HttpIntegrationSupport extends MySqlContainerSupport {
 		return send(builder.POST(HttpRequest.BodyPublishers.ofString("--" + boundary + "--\r\n")));
 	}
 
+	/** 본문 있는 DELETE임. 친구 삭제가 id를 본문으로 받음. */
+	protected Response delete(String path, String jsonBody) {
+		HttpRequest.Builder builder = HttpRequest.newBuilder(uri(path)).header("Content-Type", "application/json");
+		return send(builder.method("DELETE", HttpRequest.BodyPublishers.ofString(jsonBody)));
+	}
+
 	protected Response patch(String path, String jsonBody) {
 		HttpRequest.Builder builder = HttpRequest.newBuilder(uri(path)).header("Content-Type", "application/json");
 		return send(builder.method("PATCH", HttpRequest.BodyPublishers.ofString(jsonBody)));

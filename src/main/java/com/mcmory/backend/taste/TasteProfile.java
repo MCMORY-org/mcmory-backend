@@ -12,8 +12,8 @@ import jakarta.persistence.Table;
 /**
  * ADR-009 취향 이원화. 친구당 1행이고 재저장은 덮어쓰기임.
  *
- * source는 OWNER_INPUT(발송자 대리)과 INVITE_ANSWER(수신자 본인) 둘이고 후자는 아직 시드로만 들어옴. memberId와
- * friendId 중 정확히 하나만 값이 있어야 함 — 스키마의 CHECK 제약이 최종 방어선임.
+ * source는 OWNER_INPUT(발송자 대리)과 INVITE_ANSWER(수신자 본인) 둘임. memberId와 friendId 중 정확히 하나만 값이
+ * 있어야 함 — 스키마의 CHECK 제약이 최종 방어선임.
  */
 @Entity
 @Table(name = "taste_profile")
@@ -49,6 +49,15 @@ public class TasteProfile {
 		return profile;
 	}
 
+	/** 수신자 본인 답변임(Start-02). 발송자 대리 입력이 이것을 덮지 못함(ADR-009 결정 2). */
+	public static TasteProfile forInvite(Long friendId, String answersJson) {
+		TasteProfile profile = new TasteProfile();
+		profile.friendId = friendId;
+		profile.source = "INVITE_ANSWER";
+		profile.answers = answersJson;
+		return profile;
+	}
+
 	public Long getId() {
 		return this.id;
 	}
@@ -64,7 +73,7 @@ public class TasteProfile {
 	/**
 	 * 수신자 본인이 답한 취향인지임(ADR-009 결정 2의 INVITE_ANSWER). 발송자 대리 입력이 이것을 덮지 못하게 하는 판정에 씀.
 	 *
-	 * 시드로만 들어오는 값임 — 설문 왕복(Start-01, Start-02)은 아직 범위 밖이라 이 값을 쓰는 API 경로가 없음.
+	 * 설문 제출(`POST /api/v1/s/{token}`)이 이 값을 박음(FEAT-W001).
 	 */
 	public boolean isFromInvite() {
 		return "INVITE_ANSWER".equals(this.source);

@@ -1,6 +1,5 @@
 package com.mcmory.backend.gift;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -12,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mcmory.backend.global.apiPayload.code.FriendErrorCode;
 import com.mcmory.backend.global.apiPayload.code.GiftErrorCode;
 import com.mcmory.backend.global.apiPayload.exception.CustomException;
+import com.mcmory.backend.common.Tokens;
 import com.mcmory.backend.consent.Consent;
 import com.mcmory.backend.consent.ConsentRepository;
 import com.mcmory.backend.friend.FriendService;
@@ -37,8 +37,6 @@ public class GiftService {
 	/** ADR-001: 수신자에게 보일 익명 닉네임의 후보임. 전부 쓰이면 숫자 접미사로 넘어감. */
 	private static final List<String> ADJECTIVES = List.of("멋진", "잘생긴", "예쁜", "활발한", "다정한", "든든한");
 
-	private static final String TOKEN_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
-
 	private final GiftRepository gifts;
 
 	private final ProductRepository products;
@@ -58,8 +56,6 @@ public class GiftService {
 	private final ObjectMapper objectMapper;
 
 	private final LetterImageService letterImages;
-
-	private final SecureRandom random = new SecureRandom();
 
 	public GiftService(GiftRepository gifts, ProductRepository products, ConsentRepository consents,
 			NotificationRepository notifications, FriendService friends, RecommendService recommendations,
@@ -332,11 +328,7 @@ public class GiftService {
 	}
 
 	private String issueToken() {
-		StringBuilder token = new StringBuilder(24);
-		for (int index = 0; index < 24; index++) {
-			token.append(TOKEN_ALPHABET.charAt(this.random.nextInt(TOKEN_ALPHABET.length())));
-		}
-		return token.toString();
+		return Tokens.issue();
 	}
 
 }

@@ -2,15 +2,19 @@
 # fail-fast — 앞 단계가 깨지면 뒤를 돌리지 않는다.
 name: CI
 
-# feature와 fix는 push 트리거에 넣지 않는다. PR이 열린 뒤에는 push와 pull_request가 각각 발사돼
-# 동일한 런이 2개씩 돌기 때문. PR 대상 브랜치 둘만 push로 받는다.
+# 한 커밋에 push와 pull_request가 겹쳐 발사되지 않도록 트리거 범위를 나눈다.
+# push는 main과 dev를, pull_request는 dev 대상만 받는다. feature와 fix는 push에 넣지 않는다.
+#
+# dev를 pull_request에서 뺀 이유: dev→main PR을 열어둔 채 dev에 push하면 둘 다 발사돼 런이 2개 돌았다.
+# 그 PR에는 dev push 런의 체크가 같은 head SHA에 붙어 그대로 표시되고, 머지 결과 검증은
+# 머지 직후 main push 런이 `needs: ci` 체인으로 배포 전에 대신한다.
 on:
   workflow_dispatch:
   push:
     branches: [main, dev]
     paths-ignore: ['docs/**', '**.md']
   pull_request:
-    branches: [main, dev]
+    branches: [dev]
     paths-ignore: ['docs/**', '**.md']
 
 jobs:
