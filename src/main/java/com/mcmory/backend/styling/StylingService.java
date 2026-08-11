@@ -1,7 +1,6 @@
 package com.mcmory.backend.styling;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -141,6 +140,8 @@ public class StylingService {
 	 *
 	 * 1. 보유 제품과 **카테고리가 겹치지 않는** 것만 본다(기능명세서의 `제품군 겹치지 않게`) 2. 스타일 태그 교집합이 큰 순, 동점이면 id 순
 	 * 3. **의류를 먼저 채우고** 모자랄 때만 비의류로 메운다. 그리고 **결과끼리도 카테고리를 겹치지 않게** 함 — 안 하면 상의만 셋 나옴
+	 *
+	 * 카테고리가 3종이 안 되면 **3건을 못 채운 채로 준다.** 중복으로 메우면 위 3번을 스스로 어김.
 	 */
 	private List<Product> pick(Product base) {
 		List<String> baseTags = readTags(base.getStyleTags());
@@ -166,20 +167,9 @@ public class StylingService {
 			byCategory.putIfAbsent(product.getCategory(), product);
 		}
 
-		List<Product> picked = new ArrayList<>(byCategory.values().stream().limit(RESULT_SIZE).toList());
-		if (picked.size() < RESULT_SIZE) {
-			// 카테고리가 모자라면 중복 카테고리로 메움 — 3건을 채우는 것이 화면 요구임
-			Set<Long> already = new HashSet<>(picked.stream().map(Product::getId).toList());
-			for (Product product : candidates) {
-				if (picked.size() >= RESULT_SIZE) {
-					break;
-				}
-				if (already.add(product.getId())) {
-					picked.add(product);
-				}
-			}
-		}
-		return picked;
+		// 카테고리가 3종이 안 되면 **3건을 못 채운 채로 준다.** 중복 카테고리로 메우면 계약("결과끼리 카테고리 비겹침")을
+		// 스스로 어기고 화면에도 같은 제품군이 둘 나옴. 응답 스키마가 "후보가 모자라면 있는 만큼 온다"고 이미 밝힘
+		return byCategory.values().stream().limit(RESULT_SIZE).toList();
 	}
 
 	private static boolean isClothing(Product product) {

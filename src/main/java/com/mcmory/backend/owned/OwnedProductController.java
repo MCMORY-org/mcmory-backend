@@ -318,7 +318,7 @@ public class OwnedProductController {
 									"""))),
 			@ApiResponse(responseCode = "404", description = "없는 id, 남의 제품, 삭제된 제품, 상품 연결이 끊긴 제품", content = @Content(
 					mediaType = "application/json", examples = @ExampleObject(name = "OWNED404_2", value = """
-							{ "isSuccess": false, "code": "OWNED404_2", "message": "보유 제품을 찾을 수 없습니다", "result": null }
+							{ "isSuccess": false, "code": "OWNED404_2", "message": "제품 정보를 찾을 수 없습니다", "result": null }
 							"""))) })
 	@GetMapping("/{id}/styling")
 	public CustomResponse<StylingService.Result> styling(@PathVariable Long id) {
