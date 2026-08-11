@@ -113,7 +113,7 @@ public class OwnedProductController {
 											        "source": "EXTERNAL",
 											        "serialMemo": "MCM-2024-0001",
 											        "createdAt": "2026-08-11",
-											        "product": { "productId": 2, "name": "비세토스 토트백", "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default" }
+											        "product": { "productId": 2, "name": "비세토스 토트백", "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MWSGSTA02CO001_01/MWSGSTA02CO001?$large$&fmt=auto&qlt=default" }
 											      }
 											    ]
 											  }
@@ -159,7 +159,7 @@ public class OwnedProductController {
 											  "message": "OK",
 											  "result": {
 											    "ok": true,
-											    "product": { "productId": 2, "name": "비세토스 토트백", "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default" }
+											    "product": { "productId": 2, "name": "비세토스 토트백", "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MWSGSTA02CO001_01/MWSGSTA02CO001?$large$&fmt=auto&qlt=default" }
 											  }
 											}
 											"""))),
@@ -310,7 +310,7 @@ public class OwnedProductController {
 													  "code": "200",
 													  "message": "OK",
 													  "result": {
-													    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품", "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default" },
+													    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품", "imageUrl": null },
 													    "reasonSource": "RULE",
 													    "results": [
 													      {
@@ -334,7 +334,7 @@ public class OwnedProductController {
 													  "code": "200",
 													  "message": "OK",
 													  "result": {
-													    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품", "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default" },
+													    "product": { "productId": 4, "name": "미니 Aren 비세토스 카드 케이스", "category": "가죽 소품", "imageUrl": null },
 													    "reasonSource": "LLM",
 													    "results": [
 													      {
