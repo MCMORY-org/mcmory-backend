@@ -97,8 +97,13 @@ public class StylingService {
 					requiredMode = Schema.RequiredMode.REQUIRED) List<Suggestion> results){
 	}
 
+	/**
+	 * @param aiReason 첫 근거 문구를 모델이 쓸지임. **`false`면 Bedrock을 아예 부르지 않음**(호출 0회, 실측 54ms 대
+	 * 739ms). 그 문구를 그리는 화면이 아직 없어 기본을 끔. `true`여도 `bedrock.enabled=false`면 규칙 문구가 나가는데
+	 * 그것은 오류가 아니라 정상 동작임
+	 */
 	@Transactional(readOnly = true)
-	public Result styling(Long memberId, Long ownedId) {
+	public Result styling(Long memberId, Long ownedId, boolean aiReason) {
 		if (ownedId == null) {
 			throw new CustomException(OwnedProductErrorCode.NOT_FOUND);
 		}
@@ -120,7 +125,8 @@ public class StylingService {
 		List<String> baseTags = readTags(base.getStyleTags());
 		String matchedTag = matchedTag(baseTags, readTags(picked.get(0).getStyleTags()));
 
-		String written = this.reasonWriter.write(base, picked.get(0), matchedTag);
+		// 옵트인이 아니면 writer를 부르지도 않음 — 비용과 지연과 실패 면적이 전부 사라짐
+		String written = aiReason ? this.reasonWriter.write(base, picked.get(0), matchedTag) : null;
 		String personalReason = (written == null) ? ruleReason(matchedTag) : written;
 
 		List<Suggestion> results = new ArrayList<>();

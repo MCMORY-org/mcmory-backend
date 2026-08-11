@@ -74,15 +74,14 @@ public class BedrockStylingReasonWriter implements StylingReasonWriter {
 	public String write(Product base, Product suggestion, String matchedTag) {
 		try {
 			String raw = invoke(prompt(base, suggestion, matchedTag));
-			String normalized = StylingReasonNormalizer.normalize(raw);
-			if (normalized == null) {
-				// 예외 없이 조용히 폴백하는 유일한 경로임. 안 남기면 "왜 늘 RULE인지"를 못 알아냄 —
-				// 실제로 nova-lite가 길이 지시를 못 지켜 전부 버려지던 것을 이 로그가 없어 늦게 알았음
-				log.warn("Bedrock 문구를 버리고 규칙으로 폴백함 (길이={}, 상한={})",
-						(raw == null) ? 0 : raw.trim().codePointCount(0, raw.trim().length()),
-						StylingReasonNormalizer.MAX_LENGTH);
+			StylingReasonNormalizer.Result result = StylingReasonNormalizer.normalize(raw);
+			if (!result.accepted()) {
+				// 예외 없이 조용히 폴백하는 유일한 경로임. **사유를 안 남기면 폴백 비율(EDD의 G5)을 분해할 수 없음** —
+				// 실제로 nova-lite가 길이 지시를 못 지켜 전부 버려지던 것을 로그가 없어 늦게 알았음
+				log.warn("Bedrock 문구를 버리고 규칙으로 폴백함 (사유={}, 길이={})", result.rejection(),
+						(raw == null) ? 0 : raw.trim().codePointCount(0, raw.trim().length()));
 			}
-			return normalized;
+			return result.text();
 		}
 		catch (RuntimeException ex) {
 			// 타임아웃, 자격증명 없음, 429, 5xx 전부 여기로 옴. 사유만 남기고 본문은 남기지 않음
@@ -103,14 +102,16 @@ public class BedrockStylingReasonWriter implements StylingReasonWriter {
 				""" + "가진 제품: " + base.getName() + " (" + base.getCategory() + ")\n" + "추천 제품: " + suggestion.getName()
 				+ " (" + suggestion.getCategory() + ")\n" + "공통 스타일: " + matchedTag + "\n" + """
 
-						예시 형식(길이를 이만큼 맞춰라):
+						예시 형식(길이를 이만큼 맞춰라). **디자인이 승인한 화면 문구다**:
 						평소 미니멀 스타일을 즐기시네요
-						블랙 계열과 잘 어울려요
-						미니멀한 라인이 잘 맞아요
+						모델이 함께 매치한 제품이에요
+						캐주얼한 라인이 잘 맞아요
 
 						규칙:
 						- 한국어 존댓말 한 문장, 25자 이내
-						- 위 정보만 쓴다. 없는 취향이나 구매 이력을 지어내지 않는다
+						- **위에 준 정보만 쓴다.** 색상, 소재, 구매 이력, 다른 취향은 주지 않았으므로 언급하지 않는다
+						- 정품, 인증, 가품, 진품이라는 말과 구매 권유를 쓰지 않는다
+						- 카테고리의 영문 표기를 문장에 넣지 않는다
 						- 따옴표와 줄바꿈과 마크다운 없이 문장만 출력한다
 						""";
 	}
@@ -119,7 +120,9 @@ public class BedrockStylingReasonWriter implements StylingReasonWriter {
 		ConverseResponse response = this.client.converse(ConverseRequest.builder()
 			.modelId(this.modelId)
 			.messages(Message.builder().role(ConversationRole.USER).content(ContentBlock.fromText(prompt)).build())
-			.inferenceConfig(InferenceConfiguration.builder().maxTokens(120).temperature(0.7F).build())
+			// temperature를 낮게 잡음: 실시간 호출이라 사전 검사가 이후 출력을 보장하지 못하는데,
+			// 분산이 작을수록 30회 표본의 대표성이 올라감(EDD.md). 문구가 단조로워지는 것은 감수함
+			.inferenceConfig(InferenceConfiguration.builder().maxTokens(120).temperature(0.2F).build())
 			.build());
 
 		return response.output().message().content().get(0).text();

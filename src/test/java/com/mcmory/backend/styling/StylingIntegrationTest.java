@@ -103,13 +103,36 @@ class StylingIntegrationTest extends HttpIntegrationSupport {
 		assertThat(categories).doesNotHaveDuplicates();
 	}
 
-	/** LLM을 끈 상태라 규칙 문구임. 화면이 AI라고 단정하는 문구는 이 값이 LLM일 때만 써야 함. */
+	/**
+	 * 기본 호출은 모델을 아예 부르지 않으므로 언제나 규칙 문구임. 화면이 AI라고 단정하는 문구는 `reasonSource`가 LLM일 때만 써야 함.
+	 */
 	@Test
-	void LLM이_꺼져_있으면_reasonSource가_RULE이다() {
+	void 기본_호출은_reasonSource가_RULE이다() {
 		var response = get("/api/v1/owned/" + this.ownedId + "/styling");
 
 		assertThat(response.body().get("reasonSource").asString()).isEqualTo("RULE");
 		assertThat(response.body().get("results").get(0).get("reason").asString()).isNotBlank();
+	}
+
+	/**
+	 * 옵트인해도 이 테스트 환경은 `bedrock.enabled`가 기본값 false라 규칙 문구가 나감. **오류가 아니라 정상 동작임** — 통합
+	 * 테스트가 외부를 부르지 않아야 결과가 결정론적임.
+	 */
+	@Test
+	void 옵트인해도_Bedrock이_꺼져_있으면_RULE이다() {
+		var response = get("/api/v1/owned/" + this.ownedId + "/styling?aiReason=true");
+
+		assertThat(response.status()).isEqualTo(200);
+		assertThat(response.body().get("reasonSource").asString()).isEqualTo("RULE");
+	}
+
+	/** 잘못된 불리언은 스프링 타입 변환에서 걸림 — 우리 검증 400과 구분되는 기존 계약임. */
+	@Test
+	void 잘못된_aiReason_값은_400이다() {
+		var response = get("/api/v1/owned/" + this.ownedId + "/styling?aiReason=foo");
+
+		assertThat(response.status()).isEqualTo(400);
+		assertThat(response.code()).isEqualTo("VALID400_0");
 	}
 
 	@Test
