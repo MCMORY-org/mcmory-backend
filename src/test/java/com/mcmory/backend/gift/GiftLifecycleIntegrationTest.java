@@ -164,6 +164,28 @@ class GiftLifecycleIntegrationTest extends HttpIntegrationSupport {
 		assertThat(post("/api/v1/gift", othersRecommendation).status()).isEqualTo(400);
 	}
 
+	/** 편지함과 초대 조회의 상품 표시 계약임(F29). 프론트가 `productId`로 이미지를 고르므로 id가 빠지면 화면이 빔. */
+	@Test
+	void 편지함과_초대_조회는_productId를_주고_emoji를_주지_않는다() {
+		String token = 선물을_보낸다("친구 2").body().get("token").asString();
+
+		var sent = get("/api/v1/letters").body().get("sent").get(0);
+		assertThat(sent.get("productId").asLong()).isPositive();
+		assertThat(sent.has("emoji")).isFalse();
+
+		clearCookies();
+		loginAs(RECIPIENT_PHONE, PASSWORD);
+
+		var received = get("/api/v1/letters").body().get("received").get(0);
+		assertThat(received.get("productId").asLong()).isPositive();
+		assertThat(received.has("emoji")).isFalse();
+
+		post("/api/v1/g/" + token, null);
+		var product = get("/api/v1/g/" + token).body().get("product");
+		assertThat(product.get("productId").asLong()).isPositive();
+		assertThat(product.has("emoji")).isFalse();
+	}
+
 	private Response 선물을_보낸다(String friendName) {
 		long productId = 추천을_만든다().body().get("results").get(0).get("product").get("id").asLong();
 

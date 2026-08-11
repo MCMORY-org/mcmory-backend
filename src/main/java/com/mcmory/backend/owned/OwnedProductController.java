@@ -61,10 +61,10 @@ public class OwnedProductController {
 
 	@Schema(name = "OwnedProductView", description = "보유 제품에 연결된 상품의 표시용 요약임.")
 	public record ProductView(
+			@Schema(description = "상품 id임. 화면은 이 값으로 상품 이미지를 고름", example = "1",
+					requiredMode = Schema.RequiredMode.REQUIRED) Long productId,
 			@Schema(description = "상품명임", example = "Tracy 비세토스 크로스바디",
-					requiredMode = Schema.RequiredMode.REQUIRED) String name,
-			@Schema(description = "프로토타입은 상품 이미지 대신 이모지를 씀. 상품에 이미지가 없으면 선물 상자 이모지로 대체함", example = "👜",
-					requiredMode = Schema.RequiredMode.REQUIRED) String emoji) {
+					requiredMode = Schema.RequiredMode.REQUIRED) String name) {
 	}
 
 	@Schema(name = "OwnedView", description = "보유 제품 목록의 한 행임(19번).")
@@ -102,7 +102,7 @@ public class OwnedProductController {
 									        "source": "EXTERNAL",
 									        "serialMemo": "MCM-2024-0001",
 									        "createdAt": "2026-08-11",
-									        "product": { "name": "비세토스 토트백", "emoji": "👜" }
+									        "product": { "productId": 2, "name": "비세토스 토트백" }
 									      }
 									    ]
 									  }
@@ -124,7 +124,7 @@ public class OwnedProductController {
 
 			return new OwnedView(row.getId(), row.getSource(), row.getSerialMemo(),
 					(row.getCreatedAt() == null) ? null : row.getCreatedAt().toLocalDate(),
-					(product == null) ? null : new ProductView(product.getName(), product.emoji()));
+					(product == null) ? null : new ProductView(product.getId(), product.getName()));
 		}).toList();
 
 		return CustomResponse.ok(Map.of("list", list));
@@ -147,7 +147,7 @@ public class OwnedProductController {
 									  "message": "OK",
 									  "result": {
 									    "ok": true,
-									    "product": { "name": "비세토스 토트백", "emoji": "👜" }
+									    "product": { "productId": 2, "name": "비세토스 토트백" }
 									  }
 									}
 									"""))),
@@ -189,7 +189,7 @@ public class OwnedProductController {
 			});
 
 		this.owned.save(OwnedProduct.external(memberId, product.getId(), serial));
-		return CustomResponse.ok(Map.of("ok", true, "product", new ProductView(product.getName(), product.emoji())));
+		return CustomResponse.ok(Map.of("ok", true, "product", new ProductView(product.getId(), product.getName())));
 	}
 
 	/**

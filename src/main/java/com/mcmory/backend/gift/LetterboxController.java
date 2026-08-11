@@ -60,8 +60,8 @@ public class LetterboxController {
 					example = "다정한 호저", requiredMode = Schema.RequiredMode.REQUIRED) String nickname,
 			@Schema(description = "선물한 상품명임. 선택 — 연결된 상품이 없으면 `null`임", example = "비세토스 카드지갑",
 					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String productName,
-			@Schema(description = "상품 이모지임. 연결된 상품이 없으면 기본값 `🎁`이 나감", example = "👛",
-					requiredMode = Schema.RequiredMode.REQUIRED) String emoji,
+			@Schema(description = "선물한 상품 id임. 화면은 이 값으로 상품 이미지를 고름. 선택 — 연결된 상품이 없으면 `null`임", example = "3",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) Long productId,
 			@Schema(description = "선물 상태임. `SENT`(발송) 또는 `OPENED`(수신자가 열람) 둘뿐임. ADR-011에 따라 역방향 전이는 없음",
 					example = "OPENED", allowableValues = {
 							"SENT", "OPENED" },
@@ -86,8 +86,8 @@ public class LetterboxController {
 					requiredMode = Schema.RequiredMode.REQUIRED) String nickname,
 			@Schema(description = "받은 상품명임. 선택 — 연결된 상품이 없으면 `null`임", example = "비세토스 미니백",
 					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String productName,
-			@Schema(description = "상품 이모지임. 연결된 상품이 없으면 기본값 `🎁`이 나감", example = "👜",
-					requiredMode = Schema.RequiredMode.REQUIRED) String emoji,
+			@Schema(description = "받은 상품 id임. 화면은 이 값으로 상품 이미지를 고름. 선택 — 연결된 상품이 없으면 `null`임", example = "5",
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) Long productId,
 			@Schema(description = "선물 상태임. `SENT`(발송) 또는 `OPENED`(내가 열람) 둘뿐임. ADR-011에 따라 역방향 전이는 없음", example = "SENT",
 					allowableValues = {
 							"SENT", "OPENED" },
@@ -127,7 +127,7 @@ public class LetterboxController {
 					        "friendName": "김민지",
 					        "nickname": "다정한 호저",
 					        "productName": "비세토스 카드지갑",
-					        "emoji": "👛",
+					        "productId": 3,
 					        "status": "OPENED",
 					        "openedAt": "2026-08-11T14:03:21"
 					      }
@@ -139,7 +139,7 @@ public class LetterboxController {
 					        "token": "w9r1tv4l6zq8pd3ncm07skb2",
 					        "nickname": "느긋한 호저",
 					        "productName": "비세토스 미니백",
-					        "emoji": "👜",
+					        "productId": 5,
 					        "status": "SENT",
 					        "sentAt": "2026-08-10T09:12:00",
 					        "openedAt": null
@@ -164,17 +164,18 @@ public class LetterboxController {
 			String friendName = this.friends.findById(gift.getFriendId()).map(Friend::displayName).orElse(null);
 			Product product = productOf(gift);
 
+			// productId는 product가 아니라 gift에서 꺼냄 — 상품이 삭제돼도 id는 남아야 화면이 이미지를 고를 수 있음
 			return new SentView(gift.getId(), gift.getInviteToken(), friendName, gift.getAnonNickname(),
-					(product == null) ? null : product.getName(), (product == null) ? "🎁" : product.emoji(),
-					gift.getStatus(), gift.getOpenedAt());
+					(product == null) ? null : product.getName(), gift.getProductId(), gift.getStatus(),
+					gift.getOpenedAt());
 		}).toList();
 
 		List<ReceivedView> received = this.gifts.findByRecipientMemberIdOrderByIdDesc(memberId).stream().map((gift) -> {
 			Product product = productOf(gift);
 
 			return new ReceivedView(gift.getId(), gift.getInviteToken(), gift.getAnonNickname(),
-					(product == null) ? null : product.getName(), (product == null) ? "🎁" : product.emoji(),
-					gift.getStatus(), gift.getSentAt(), gift.getOpenedAt());
+					(product == null) ? null : product.getName(), gift.getProductId(), gift.getStatus(),
+					gift.getSentAt(), gift.getOpenedAt());
 		}).toList();
 
 		// unread는 발송분 기준(수신자가 열어본 건수)이고 receivedUnopened는 수신분 기준(내가 아직 안 연 건수)임.

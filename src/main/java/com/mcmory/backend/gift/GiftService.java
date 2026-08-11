@@ -129,9 +129,8 @@ public class GiftService {
 		return color;
 	}
 
-	public record ProductView(
+	public record ProductView(@Schema(description = "상품 id임. 화면은 이 값으로 상품 이미지를 고름", example = "1") Long productId,
 			@Schema(description = "상품 이름임. 스냅샷이 아니라 현재 값이라 상품이 바뀌면 바뀐 값이 보임", example = "숄더백") String name,
-			@Schema(description = "상품을 대표하는 이모지임. 상품 이미지 대신 화면에 그리는 값임", example = "👜") String emoji,
 			@Schema(description = "상품 가격임. 이름과 마찬가지로 스냅샷이 아니라 현재 값임. 값이 없는 상품은 `0`으로 내려감. "
 					+ "**단위는 원임** — 추천 요청의 예산(만원 단위)과 다르므로 그대로 비교하지 말 것", example = "890000") int price) {
 	}
@@ -248,7 +247,7 @@ public class GiftService {
 		OwnedProduct owned = this.owned.findByGiftIdAndDeletedAtIsNull(gift.getId())
 			.orElseGet(() -> this.owned.save(OwnedProduct.fromGift(memberId, product.getId(), gift.getId())));
 
-		return new OwnedFromGift(owned.getId(), owned.getSource(), new ProductView(product.getName(), product.emoji(),
+		return new OwnedFromGift(owned.getId(), owned.getSource(), new ProductView(product.getId(), product.getName(),
 				(product.getPrice() == null) ? 0 : product.getPrice()));
 	}
 
@@ -319,7 +318,7 @@ public class GiftService {
 				: this.products.findById(gift.getProductId()).orElse(null);
 
 		return new InviteView(false, gift.getAnonNickname(), gift.getLetterBody(), readImageUrls(gift),
-				gift.getLetterColor(), (product == null) ? null : new ProductView(product.getName(), product.emoji(),
+				gift.getLetterColor(), (product == null) ? null : new ProductView(product.getId(), product.getName(),
 						(product.getPrice() == null) ? 0 : product.getPrice()),
 				gift.getOpenedAt());
 	}

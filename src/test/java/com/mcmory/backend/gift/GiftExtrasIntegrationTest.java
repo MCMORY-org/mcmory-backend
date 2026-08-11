@@ -273,6 +273,25 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 		assertThat(after.body().get("letterColor").asString()).isEqualTo("BEIGE");
 	}
 
+	/** 보유 제품의 상품 표시 계약임(F29). 프론트가 `productId`로 이미지를 고르므로 id가 빠지면 화면이 빔. */
+	@Test
+	void 보유_등록과_목록은_productId를_주고_emoji를_주지_않는다() {
+		String token = 선물을_보낸다();
+
+		clearCookies();
+		loginAs(RECIPIENT_PHONE, PASSWORD);
+		post("/api/v1/g/" + token, null);
+
+		Response registered = post("/api/v1/g/" + token + "/owned", null);
+		assertThat(registered.status()).as(registered.text()).isEqualTo(200);
+		assertThat(registered.body().get("product").get("productId").asLong()).isPositive();
+		assertThat(registered.body().get("product").has("emoji")).isFalse();
+
+		var listed = get("/api/v1/owned").body().get("list").get(0).get("product");
+		assertThat(listed.get("productId").asLong()).isPositive();
+		assertThat(listed.has("emoji")).isFalse();
+	}
+
 	private long 상품_id() {
 		Response recommended = post("/api/v1/recommend", "{\"relation\":\"친구\",\"minBudget\":0,\"maxBudget\":500}");
 		assertThat(recommended.status()).isEqualTo(200);
