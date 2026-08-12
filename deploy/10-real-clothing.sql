@@ -50,7 +50,7 @@ UPDATE product SET
   price = 440000,
   image_url = 'https://images.mcmworldwide.com/i/mcmworldwide/MHTGSMM07CO00M_01/MHTGSMM07CO00M?$large$&fmt=auto&qlt=default',
   official_url = 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/monogram-print-t-shirt/MHTGSMM07CO00M.html',
-  style_tags = JSON_ARRAY('클래식','미니멀')
+  style_tags = JSON_ARRAY('클래식')
   WHERE id = 13;
 
 UPDATE product SET

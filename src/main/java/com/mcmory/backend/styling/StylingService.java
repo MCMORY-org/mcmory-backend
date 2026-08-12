@@ -72,7 +72,7 @@ public class StylingService {
 	public record Suggestion(
 			@Schema(description = "제안 상품 id임. 화면은 이 값으로 상품 이미지를 고름", example = "11",
 					requiredMode = Schema.RequiredMode.REQUIRED) Long productId,
-			@Schema(description = "상품명임", example = "워싱 데님 재킷",
+			@Schema(description = "상품명임", example = "Washed Denim Jacket",
 					requiredMode = Schema.RequiredMode.REQUIRED) String name,
 			@Schema(description = "상품 카테고리임", example = "WOMAN OUTER",
 					requiredMode = Schema.RequiredMode.REQUIRED) String category,
