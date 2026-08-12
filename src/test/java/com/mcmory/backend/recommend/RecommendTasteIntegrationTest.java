@@ -84,6 +84,24 @@ class RecommendTasteIntegrationTest extends HttpIntegrationSupport {
 		assertThat(product.has("emoji")).as(response.text()).isFalse();
 	}
 
+	/**
+	 * **`imageUrl`은 주소이거나 없어야 함.** 값이 있으면 화면이 그대로 `img` 주소로 쓰므로 이모지가 들어가면
+	 * `<img src="👜">`가 되어 깨진 이미지가 되고 폴백(`/products/{id}.webp`)도 안 탐.
+	 *
+	 * 2026-08-12까지 시드에 실제로 이모지가 들어 있었는데 **이것을 잡는 단언이 어디에도 없었음.** 이 테스트가 그 그물임.
+	 */
+	@Test
+	void 추천_상품의_imageUrl은_없거나_http로_시작한다() {
+		var response = post("/api/v1/recommend", "{\"relation\":\"친구\"," + DEFAULT_BUDGET + "}");
+
+		response.body().get("results").forEach((result) -> {
+			var imageUrl = result.get("product").get("imageUrl");
+			if (imageUrl != null && !imageUrl.isNull()) {
+				assertThat(imageUrl.asString()).as(response.text()).startsWith("http");
+			}
+		});
+	}
+
 	@Test
 	void 남의_친구_취향은_읽지_못하고_404가_난다() {
 		clearCookies();
