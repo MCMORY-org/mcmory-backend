@@ -40,17 +40,17 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 	void 수신자_답변이_추천_1순위를_바꾼다() {
 		String token = 설문토큰발급("설문친구", "01055550001");
 
-		var view = get("/api/v1/s/" + token);
+		var view = get("/api/v1/surveys/" + token);
 		assertThat(view.status()).as(view.text()).isEqualTo(200);
 		assertThat(view.body().get("friendName").asString()).isEqualTo("설문친구");
 		assertThat(view.body().get("answered").asBoolean()).isFalse();
 		// 발송자 실명("테스터")이 새면 안 됨. 지금은 더미이고 표시명 규칙은 미결임(AnonNicknameProvider)
 		assertThat(view.body().get("senderName").asString()).isEqualTo("멋쟁이사자");
 
-		var submitted = post("/api/v1/s/" + token,
+		var submitted = post("/api/v1/surveys/" + token,
 				"{\"privacyAgreed\":true,\"colors\":[\"블랙\"],\"styles\":[\"미니멀\"],\"bags\":[\"크로스바디\"]}");
 		assertThat(submitted.status()).as(submitted.text()).isEqualTo(200);
-		assertThat(get("/api/v1/s/" + token).body().get("answered").asBoolean()).isTrue();
+		assertThat(get("/api/v1/surveys/" + token).body().get("answered").asBoolean()).isTrue();
 
 		long friendId = 설문친구아이디("설문친구");
 		var recommended = post("/api/v1/recommend",
@@ -68,7 +68,7 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 	@Test
 	void 제출된_답변은_발송자의_취향_저장으로_덮이지_않는다() {
 		String token = 설문토큰발급("보호친구", "01055550002");
-		post("/api/v1/s/" + token, "{\"privacyAgreed\":true,\"colors\":[\"블랙\"],\"styles\":[],\"bags\":[]}");
+		post("/api/v1/surveys/" + token, "{\"privacyAgreed\":true,\"colors\":[\"블랙\"],\"styles\":[],\"bags\":[]}");
 
 		long friendId = 설문친구아이디("보호친구");
 		var saved = patch("/api/v1/friends", "{\"id\":" + friendId + ",\"tasteSummary\":\"발송자가 적은 요약\"}");
@@ -82,9 +82,9 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 	void 재제출은_행을_늘리지_않고_덮어쓴다() {
 		String token = 설문토큰발급("재제출친구", "01055550003");
 
-		var first = post("/api/v1/s/" + token,
+		var first = post("/api/v1/surveys/" + token,
 				"{\"privacyAgreed\":true,\"colors\":[\"블랙\"],\"styles\":[],\"bags\":[]}");
-		var second = post("/api/v1/s/" + token,
+		var second = post("/api/v1/surveys/" + token,
 				"{\"privacyAgreed\":true,\"colors\":[\"핑크\"],\"styles\":[],\"bags\":[]}");
 
 		assertThat(first.status()).as(first.text()).isEqualTo(200);
@@ -129,8 +129,8 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 
 	@Test
 	void 없는_토큰은_404다() {
-		var view = get("/api/v1/s/nosuchtokennosuchtoken");
-		var submitted = post("/api/v1/s/nosuchtokennosuchtoken",
+		var view = get("/api/v1/surveys/nosuchtokennosuchtoken");
+		var submitted = post("/api/v1/surveys/nosuchtokennosuchtoken",
 				"{\"privacyAgreed\":true,\"colors\":[\"블랙\"],\"styles\":[],\"bags\":[]}");
 
 		assertThat(view.status()).as(view.text()).isEqualTo(404);
@@ -147,32 +147,32 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 		var erased = delete("/api/v1/friends", "{\"id\":" + friendId + "}");
 		assertThat(erased.status()).as(erased.text()).isEqualTo(200);
 
-		assertThat(get("/api/v1/s/" + token).status()).isEqualTo(404);
+		assertThat(get("/api/v1/surveys/" + token).status()).isEqualTo(404);
 	}
 
 	@Test
 	void 동의를_안_하면_저장하지_않는다() {
 		String token = 설문토큰발급("동의친구", "01055550007");
 
-		var submitted = post("/api/v1/s/" + token,
+		var submitted = post("/api/v1/surveys/" + token,
 				"{\"privacyAgreed\":false,\"colors\":[\"블랙\"],\"styles\":[],\"bags\":[]}");
 
 		assertThat(submitted.status()).as(submitted.text()).isEqualTo(400);
 		assertThat(submitted.code()).isEqualTo("FRIEND400_3");
-		assertThat(get("/api/v1/s/" + token).body().get("answered").asBoolean()).isFalse();
+		assertThat(get("/api/v1/surveys/" + token).body().get("answered").asBoolean()).isFalse();
 	}
 
 	@Test
 	void 선택지_밖_값과_빈_답변은_400이다() {
 		String token = 설문토큰발급("검증친구", "01055550008");
 
-		var outOfList = post("/api/v1/s/" + token,
+		var outOfList = post("/api/v1/surveys/" + token,
 				"{\"privacyAgreed\":true,\"colors\":[\"형광연두\"],\"styles\":[],\"bags\":[]}");
 		// null 원소가 NPE로 500이 되면 사용자 입력 오류가 서버 오류로 둔갑함
-		var withNull = post("/api/v1/s/" + token,
+		var withNull = post("/api/v1/surveys/" + token,
 				"{\"privacyAgreed\":true,\"colors\":[null,\"블랙\"],\"styles\":[],\"bags\":[]}");
 		// 가방만 고르면 답변은 있는데 추천에 아무 영향이 없는 상태가 됨
-		var bagsOnly = post("/api/v1/s/" + token,
+		var bagsOnly = post("/api/v1/surveys/" + token,
 				"{\"privacyAgreed\":true,\"colors\":[],\"styles\":[],\"bags\":[\"백팩\"]}");
 
 		assertThat(outOfList.status()).as(outOfList.text()).isEqualTo(400);
@@ -193,20 +193,20 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 		assertThat(issued.status()).as(issued.text()).isEqualTo(200);
 		String token = issued.body().get("token").asString();
 
-		var view = get("/api/v1/s/" + token);
+		var view = get("/api/v1/surveys/" + token);
 		assertThat(view.body().get("axes").toString()).as(view.text()).isEqualTo("[\"colors\"]");
 
 		// 끈 축의 답을 조용히 버리면 수신자가 고른 것이 사라진 채 200이 나감
-		var offAxis = post("/api/v1/s/" + token,
+		var offAxis = post("/api/v1/surveys/" + token,
 				"{\"privacyAgreed\":true,\"colors\":[\"블랙\"],\"styles\":[\"미니멀\"],\"bags\":[]}");
 		assertThat(offAxis.status()).as(offAxis.text()).isEqualTo(400);
 		assertThat(offAxis.code()).isEqualTo("FRIEND400_4");
 
-		var onAxis = post("/api/v1/s/" + token,
+		var onAxis = post("/api/v1/surveys/" + token,
 				"{\"privacyAgreed\":true,\"colors\":[\"블랙\"],\"styles\":[],\"bags\":[]}");
 		assertThat(onAxis.status()).as(onAxis.text()).isEqualTo(200);
 		// 200만 보면 축 검사가 저장까지 통째로 건너뛰어도 통과함(CodeRabbit PR #18)
-		assertThat(get("/api/v1/s/" + token).body().get("answered").asBoolean()).isTrue();
+		assertThat(get("/api/v1/surveys/" + token).body().get("answered").asBoolean()).isTrue();
 	}
 
 	/** 토글을 고쳐 다시 저장하는 것이 정상 경로임 — 그때 이미 보낸 링크가 죽으면 안 됨. */
@@ -221,7 +221,7 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 		var second = post("/api/v1/friends/" + friendId + "/survey", "{\"axes\":[\"styles\",\"bags\"]}");
 
 		assertThat(second.body().get("token").asString()).isEqualTo(first);
-		assertThat(get("/api/v1/s/" + first).body().get("axes").toString()).isEqualTo("[\"styles\",\"bags\"]");
+		assertThat(get("/api/v1/surveys/" + first).body().get("axes").toString()).isEqualTo("[\"styles\",\"bags\"]");
 	}
 
 	@Test
@@ -229,7 +229,7 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 		String token = 설문토큰발급("기본축친구", "01055550011");
 
 		// 화면이 토글을 안 보내던 시절과 같게 동작해야 함. 여기서 축이 비면 기존 프론트가 아무것도 못 그림
-		assertThat(get("/api/v1/s/" + token).body().get("axes").toString())
+		assertThat(get("/api/v1/surveys/" + token).body().get("axes").toString())
 			.isEqualTo("[\"colors\",\"styles\",\"bags\"]");
 	}
 

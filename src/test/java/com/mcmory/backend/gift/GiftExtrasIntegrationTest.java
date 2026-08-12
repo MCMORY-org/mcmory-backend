@@ -45,9 +45,9 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 
 		clearCookies();
 		loginAs(RECIPIENT_PHONE, PASSWORD);
-		post("/api/v1/g/" + token, null);
+		post("/api/v1/invitations/" + token, null);
 
-		Response first = post("/api/v1/g/" + token + "/owned", null);
+		Response first = post("/api/v1/invitations/" + token + "/owned", null);
 		assertThat(first.status()).as(first.text()).isEqualTo(200);
 		assertThat(first.body().get("source").asString()).isEqualTo("GIFT");
 		long ownedId = first.body().get("id").asLong();
@@ -55,7 +55,7 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 		int countAfterFirst = get("/api/v1/owned").body().get("list").size();
 
 		// 더블클릭 재현임. 새 행을 만들면 목록이 늘어남
-		Response second = post("/api/v1/g/" + token + "/owned", null);
+		Response second = post("/api/v1/invitations/" + token + "/owned", null);
 		assertThat(second.status()).isEqualTo(200);
 		assertThat(second.body().get("id").asLong()).isEqualTo(ownedId);
 		assertThat(get("/api/v1/owned").body().get("list").size()).isEqualTo(countAfterFirst);
@@ -67,15 +67,15 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 
 		clearCookies();
 		loginAs(RECIPIENT_PHONE, PASSWORD);
-		Response beforeOpen = post("/api/v1/g/" + token + "/owned", null);
+		Response beforeOpen = post("/api/v1/invitations/" + token + "/owned", null);
 		assertThat(beforeOpen.status()).isEqualTo(400);
 		assertThat(beforeOpen.code()).isEqualTo("GIFT400_3");
 
 		// 이 경로는 시큐리티가 인가하지 않으므로 컨트롤러의 requireId()가 유일한 문지기임.
 		// 그것이 빠지면 남의 선물을 아무나 자기 제품으로 등록하게 되므로 이 단언이 인증 구멍의 감시자임
-		post("/api/v1/g/" + token, null);
+		post("/api/v1/invitations/" + token, null);
 		clearCookies();
-		Response anonymous = post("/api/v1/g/" + token + "/owned", null);
+		Response anonymous = post("/api/v1/invitations/" + token + "/owned", null);
 		assertThat(anonymous.status()).isEqualTo(401);
 	}
 
@@ -85,12 +85,12 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 
 		clearCookies();
 		loginAs(RECIPIENT_PHONE, PASSWORD);
-		post("/api/v1/g/" + token, null);
+		post("/api/v1/invitations/" + token, null);
 
 		// 발송자는 이 선물의 수신자가 아님
 		clearCookies();
 		loginAs(SENDER_PHONE, PASSWORD);
-		Response response = post("/api/v1/g/" + token + "/owned", null);
+		Response response = post("/api/v1/invitations/" + token + "/owned", null);
 
 		assertThat(response.status()).isEqualTo(404);
 		assertThat(response.code()).isEqualTo("GIFT404_1");
@@ -99,13 +99,13 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 	@Test
 	void 옵션_변경_문의는_한_번만_되고_발송자_알림에_사유가_실린다() {
 		String token = 선물을_보낸다();
-		post("/api/v1/g/" + token, null);
+		post("/api/v1/invitations/" + token, null);
 
-		Response first = post("/api/v1/g/" + token + "/change-request", "{\"reason\":\"SIZE\"}");
+		Response first = post("/api/v1/invitations/" + token + "/change-request", "{\"reason\":\"SIZE\"}");
 		assertThat(first.status()).as(first.text()).isEqualTo(200);
 		assertThat(first.body().get("reason").asString()).isEqualTo("SIZE");
 
-		Response second = post("/api/v1/g/" + token + "/change-request", "{\"reason\":\"COLOR\"}");
+		Response second = post("/api/v1/invitations/" + token + "/change-request", "{\"reason\":\"COLOR\"}");
 		assertThat(second.status()).isEqualTo(409);
 		assertThat(second.code()).isEqualTo("GIFT409_1");
 
@@ -120,9 +120,9 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 	@Test
 	void 모르는_문의_사유는_400이다() {
 		String token = 선물을_보낸다();
-		post("/api/v1/g/" + token, null);
+		post("/api/v1/invitations/" + token, null);
 
-		Response response = post("/api/v1/g/" + token + "/change-request", "{\"reason\":\"WHATEVER\"}");
+		Response response = post("/api/v1/invitations/" + token + "/change-request", "{\"reason\":\"WHATEVER\"}");
 
 		assertThat(response.status()).isEqualTo(400);
 		assertThat(response.code()).isEqualTo("GIFT400_4");
@@ -156,9 +156,9 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 	@Test
 	void 사진_없이_보낸_선물은_열람에_사진_키가_없다() {
 		String token = 선물을_보낸다();
-		post("/api/v1/g/" + token, null);
+		post("/api/v1/invitations/" + token, null);
 
-		Response invite = get("/api/v1/g/" + token);
+		Response invite = get("/api/v1/invitations/" + token);
 
 		assertThat(invite.status()).isEqualTo(200);
 		assertThat(invite.body().has("letterImageUrls")).as(invite.text()).isFalse();
@@ -183,8 +183,8 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 		assertThat(sent.status()).as(sent.text()).isEqualTo(200);
 
 		String token = sent.body().get("token").asString();
-		post("/api/v1/g/" + token, null);
-		Response invite = get("/api/v1/g/" + token);
+		post("/api/v1/invitations/" + token, null);
+		Response invite = get("/api/v1/invitations/" + token);
 
 		assertThat(invite.body().get("letterImageUrls").size()).isEqualTo(2);
 		assertThat(invite.body().get("letterImageUrls").get(0).asString()).isEqualTo(first);
@@ -264,11 +264,11 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 		String token = sent.body().get("token").asString();
 
 		// 동의 전에는 키 자체가 없어야 함(NON_NULL 계약)
-		Response before = get("/api/v1/g/" + token);
+		Response before = get("/api/v1/invitations/" + token);
 		assertThat(before.body().has("letterColor")).as(before.text()).isFalse();
 
-		post("/api/v1/g/" + token, null);
-		Response after = get("/api/v1/g/" + token);
+		post("/api/v1/invitations/" + token, null);
+		Response after = get("/api/v1/invitations/" + token);
 		// 소문자로 보내도 대문자 토큰으로 정규화해 저장함
 		assertThat(after.body().get("letterColor").asString()).isEqualTo("BEIGE");
 	}
@@ -292,8 +292,8 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 		// 등록 전에는 수신함에 없음 — 발송 시점에 귀속될 근거가 없었음
 		assertThat(nicknamesOf(get("/api/v1/letters"))).doesNotContain(nickname);
 
-		post("/api/v1/g/" + token, null);
-		assertThat(post("/api/v1/g/" + token + "/owned", null).status()).isEqualTo(200);
+		post("/api/v1/invitations/" + token, null);
+		assertThat(post("/api/v1/invitations/" + token + "/owned", null).status()).isEqualTo(200);
 
 		assertThat(nicknamesOf(get("/api/v1/letters"))).as("등록했는데 받은 편지함이 비어 있음").contains(nickname);
 	}
@@ -311,9 +311,9 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 
 		clearCookies();
 		loginAs(RECIPIENT_PHONE, PASSWORD);
-		post("/api/v1/g/" + token, null);
+		post("/api/v1/invitations/" + token, null);
 
-		Response registered = post("/api/v1/g/" + token + "/owned", null);
+		Response registered = post("/api/v1/invitations/" + token + "/owned", null);
 		assertThat(registered.status()).as(registered.text()).isEqualTo(200);
 		assertThat(registered.body().get("product").get("productId").asLong()).isPositive();
 		assertThat(registered.body().get("product").has("emoji")).isFalse();
