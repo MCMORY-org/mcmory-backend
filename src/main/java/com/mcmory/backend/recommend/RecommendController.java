@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "추천",
@@ -59,7 +60,13 @@ public class RecommendController {
 			example = "101", requiredMode = Schema.RequiredMode.REQUIRED) Long friendId) {
 	}
 
-	/** FR-009 추천 생성. 회원만 쓰는 발송자 흐름임. 응답에 recommendationId가 붙되 results 형태는 불변임. */
+	/**
+	 * FR-009 추천 생성. 회원만 쓰는 발송자 흐름임.
+	 *
+	 * `aiReason`은 후보 안에서의 선정과 첫 근거 문구를 모델이 할지임. **`false`면 Bedrock을 아예 부르지 않음**(호출 0회).
+	 * 스타일링(#32)과 같은 옵트인 계약이라 화면이 새로 배울 것이 없음. `true`여도 `bedrock.enabled=false`거나 모델이 형식을
+	 * 어기면 규칙 결과가 나가는데 그것은 오류가 아니라 정상 동작임.
+	 */
 	@Operation(summary = "추천 생성 (#8)",
 			description = """
 					관계 태그와 예산으로 선물을 추천함. 로그인 필수임. 호출마다 이력이 남음.
@@ -73,6 +80,8 @@ public class RecommendController {
 					함정 4 — `reasonType`은 `PERSONAL`과 `GENERAL` 둘이고 **첫 항목만 PERSONAL이 될 수 있음**(ADR-009).
 
 					함정 5 — `FRIEND404_1`은 `friendId`를 보내는 경우에만 옴.
+
+					함정 6 — 쿼리 `?aiReason=true`는 **옵트인**임. 켜면 규칙이 좁힌 후보 안에서 모델이 3건을 고르고 1순위 근거를 씀. 응답의 `reasonSource`가 `LLM`이면 그렇게 된 것이고 `RULE`이면 규칙 결과임. **모델이 후보 밖 상품을 고르거나 형식을 어기면 서버가 통째로 버리고 규칙으로 떨어짐 — 200이고 오류가 아님.** 후보 자체는 어느 쪽이든 항상 규칙이 만듦.
 					""")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "추천 생성 성공",
@@ -85,6 +94,7 @@ public class RecommendController {
 											  "message": "OK",
 											  "result": {
 											    "recommendationId": 3,
+											    "reasonSource": "RULE",
 											    "results": [
 											      {
 											        "product": { "id": 1, "name": "Tracy 비세토스 크로스바디", "price": 890000, "color": "블랙", "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MMRGATA07BK001_01/MMRGATA07BK001?$large$&fmt=auto&qlt=default" },
@@ -118,13 +128,15 @@ public class RecommendController {
 											{ "isSuccess": false, "code": "FRIEND404_1", "message": "친구 정보를 찾을 수 없습니다", "result": null }
 											"""))) })
 	@PostMapping
-	public CustomResponse<Map<String, Object>> recommend(@RequestBody RecommendRequest request) {
+	public CustomResponse<Map<String, Object>> recommend(@RequestBody RecommendRequest request,
+			@RequestParam(defaultValue = "false") boolean aiReason) {
 		RecommendService.Created created = this.recommendService.recommend(this.currentMember.requireId(),
 				(request.relation() == null) ? "친구" : request.relation(),
 				(request.minBudget() == null) ? 0 : request.minBudget(),
-				(request.maxBudget() == null) ? 0 : request.maxBudget(), request.friendId());
+				(request.maxBudget() == null) ? 0 : request.maxBudget(), request.friendId(), aiReason);
 
-		return CustomResponse.ok(Map.of("recommendationId", created.recommendationId(), "results", created.results()));
+		return CustomResponse.ok(Map.of("recommendationId", created.recommendationId(), "reasonSource",
+				created.reasonSource(), "results", created.results()));
 	}
 
 	/**
