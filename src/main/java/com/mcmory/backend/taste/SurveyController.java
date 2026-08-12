@@ -20,7 +20,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * `Start-01`과 `Start-02`임. 초대 열람(`/api/v1/g/{token}`)과 같은 비회원 경로임 — 수신자는 회원이 아닐 수 있음.
+ * `Start-01`과 `Start-02`임. 초대 열람(`/api/v1/invitations/{token}`)과 같은 비회원 경로임 — 수신자는 회원이 아닐
+ * 수 있음.
  */
 @Tag(name = "수신자 설문",
 		description = "수신자가 SMS로 받은 설문 링크에서 본인 확인과 동의(`Start-01`)를 거쳐 취향에 답하는(`Start-02`) 비회원 경로임. 토큰이 인증 주체가 아니라 리소스 식별자이자 권한 근거임(ADR-013 결정 4) — 수신자는 회원이 아닐 수 있어 로그인을 요구하지 않음. 추천은 이 답변 뒤에 나옴.")
@@ -69,7 +70,7 @@ public class SurveyController {
 							  "message": "친구 정보를 찾을 수 없습니다",
 							  "result": null
 							}"""))) })
-	@GetMapping("/api/v1/s/{token}")
+	@GetMapping("/api/v1/surveys/{token}")
 	public CustomResponse<SurveyService.SurveyView> read(@PathVariable String token) {
 		return CustomResponse.ok(this.survey.read(token));
 	}
@@ -126,7 +127,7 @@ public class SurveyController {
 							  "message": "친구 정보를 찾을 수 없습니다",
 							  "result": null
 							}"""))) })
-	@PostMapping("/api/v1/s/{token}")
+	@PostMapping("/api/v1/surveys/{token}")
 	public CustomResponse<Map<String, Object>> submit(@PathVariable String token, @RequestBody SubmitRequest request) {
 		this.survey.submit(token, request.privacyAgreed(), request.colors(), request.styles(), request.bags());
 		return CustomResponse.ok(Map.of("ok", true));

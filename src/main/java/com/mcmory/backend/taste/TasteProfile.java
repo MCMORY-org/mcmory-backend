@@ -73,7 +73,7 @@ public class TasteProfile {
 	/**
 	 * 수신자 본인이 답한 취향인지임(ADR-009 결정 2의 INVITE_ANSWER). 발송자 대리 입력이 이것을 덮지 못하게 하는 판정에 씀.
 	 *
-	 * 설문 제출(`POST /api/v1/s/{token}`)이 이 값을 박음(FEAT-W001).
+	 * 설문 제출(`POST /api/v1/surveys/{token}`)이 이 값을 박음(FEAT-W001).
 	 */
 	public boolean isFromInvite() {
 		return "INVITE_ANSWER".equals(this.source);
