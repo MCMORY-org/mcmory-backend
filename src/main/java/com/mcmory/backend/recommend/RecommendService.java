@@ -37,6 +37,13 @@ public class RecommendService {
 	private static final Map<String, String> RELATION_TAG = Map.of("연인", "러블리", "친구", "캐주얼", "부모님", "클래식", "스승/제자",
 			"포멀");
 
+	private static final int RESULT_SIZE = 3;
+
+	/** 프롬프트에 싣는 후보 수임. 3건보다 넓어야 모델이 고를 여지가 생기고, 넓힐수록 환각 면적과 지연이 늚. */
+	private static final int CANDIDATE_SIZE = 8;
+
+	private static final String GENERAL_REASON = "모델이 함께 매치한 제품이에요";
+
 	private final ProductRepository products;
 
 	private final RecommendationRepository recommendations;
@@ -49,15 +56,18 @@ public class RecommendService {
 
 	private final ObjectMapper objectMapper;
 
+	private final GiftPicker giftPicker;
+
 	public RecommendService(ProductRepository products, RecommendationRepository recommendations,
 			RecommendationResultRepository recommendationResults, FriendRepository friends,
-			TasteProfileRepository tasteProfiles, ObjectMapper objectMapper) {
+			TasteProfileRepository tasteProfiles, ObjectMapper objectMapper, GiftPicker giftPicker) {
 		this.products = products;
 		this.recommendations = recommendations;
 		this.recommendationResults = recommendationResults;
 		this.friends = friends;
 		this.tasteProfiles = tasteProfiles;
 		this.objectMapper = objectMapper;
+		this.giftPicker = giftPicker;
 	}
 
 	/**
@@ -125,8 +135,18 @@ public class RecommendService {
 	public record Created(
 			@Schema(description = "생성된 추천 id. 재조회(#9)와 선물 발송(#11)이 이 값을 씀", example = "3",
 					requiredMode = Schema.RequiredMode.REQUIRED) Long recommendationId,
-			@Schema(description = "추천 결과. 점수 내림차순이고 최대 3건임. 예산에 맞는 상품이 없으면 전체 카탈로그에서 고름",
-					requiredMode = Schema.RequiredMode.REQUIRED) List<Result> results) {
+			@Schema(description = "**무엇이 3건을 골랐는지임.** `LLM`이면 후보 안에서 모델이 고르고 첫 문구까지 썼다는 뜻이고, `RULE`이면 규칙 결과임. "
+					+ "**후보 자체는 어느 쪽이든 항상 규칙이 만듦** — 모델은 그 밖으로 나갈 수 없음. "
+					+ "스타일링(#32)의 같은 이름 필드는 문구 작성 주체만 뜻하므로 의미가 다름. " + "**스냅샷 재조회(#9)에는 저장되지 않음** — 생성 응답 전용임",
+					example = "RULE", allowableValues = {
+							"LLM", "RULE" },
+					requiredMode = Schema.RequiredMode.REQUIRED) String reasonSource,
+			@Schema(description = "추천 결과. 최대 3건임. 예산에 맞는 상품이 없으면 전체 카탈로그에서 고름",
+					requiredMode = Schema.RequiredMode.REQUIRED) List<Result> results){
+	}
+
+	/** 결과와 그것을 무엇이 골랐는지임. 저장은 결과만 하고 출처는 응답에만 실음. */
+	private record Calculated(List<Result> results, String reasonSource) {
 	}
 
 	/**
@@ -135,9 +155,10 @@ public class RecommendService {
 	 */
 	@Transactional
 	public Created recommend(Long memberId, String relation, int minBudgetInTenThousand, int maxBudgetInTenThousand,
-			Long friendId) {
+			Long friendId, boolean aiReason) {
 		TasteAnswers taste = tasteOf(memberId, friendId);
-		List<Result> results = calculate(relation, minBudgetInTenThousand, maxBudgetInTenThousand, taste);
+		Calculated calculated = calculate(relation, minBudgetInTenThousand, maxBudgetInTenThousand, taste, aiReason);
+		List<Result> results = calculated.results();
 
 		Recommendation saved = this.recommendations.saveAndFlush(new Recommendation(memberId,
 				toContextJson(relation, minBudgetInTenThousand, maxBudgetInTenThousand, friendId)));
@@ -148,7 +169,7 @@ public class RecommendService {
 					result.reasonType(), result.reason()));
 		}
 
-		return new Created(saved.getId(), results);
+		return new Created(saved.getId(), calculated.reasonSource(), results);
 	}
 
 	/**
@@ -282,8 +303,8 @@ public class RecommendService {
 	}
 
 	/** 입력 예산 단위는 만원임(화면 표기 그대로). 원 단위 환산은 컨트롤러가 아니라 여기서 함. */
-	private List<Result> calculate(String relation, int minBudgetInTenThousand, int maxBudgetInTenThousand,
-			TasteAnswers taste) {
+	private Calculated calculate(String relation, int minBudgetInTenThousand, int maxBudgetInTenThousand,
+			TasteAnswers taste, boolean aiReason) {
 		// 모르는 관계는 선호 태그가 없어 조용히 일반 추천이 나감 — 화면이 보내는 4종만 받음
 		if (!RELATION_TAG.containsKey(relation)) {
 			throw new CustomException(RecommendErrorCode.INVALID_CONDITION);
@@ -323,19 +344,86 @@ public class RecommendService {
 		// 안정 정렬이라 점수가 같으면 id 순서가 유지됨(스모크가 첫 항목의 근거 유형을 봄)
 		scored.sort(Comparator.comparingInt(Scored::score).reversed());
 
+		List<Scored> ruleTop = scored.subList(0, Math.min(RESULT_SIZE, scored.size()));
+		if (!aiReason) {
+			// 옵트인이 아니면 선정기를 부르지도 않음 — 비용과 지연과 실패 면적이 전부 사라짐
+			return new Calculated(assemble(ruleTop, relation, preferredTag, null), "RULE");
+		}
+
+		ModelPick modelPick = pickByModel(scored, relation, taste);
+		if (modelPick == null) {
+			return new Calculated(assemble(ruleTop, relation, preferredTag, null), "RULE");
+		}
+		return new Calculated(assemble(modelPick.items(), relation, preferredTag, modelPick.reason()), "LLM");
+	}
+
+	/**
+	 * 모델이 고른 것임. **서비스가 싱글턴이라 필드로 들고 다니면 동시 요청끼리 근거가 섞임** — 그래서 반환값으로 묶어서 넘김.
+	 */
+	private record ModelPick(List<Scored> items, String reason) {
+	}
+
+	/**
+	 * 모델에게 후보를 주고 고르게 함. 못 고르거나 **후보 밖 상품을 고르면 `null`을 돌려줌** — 호출부가 규칙 결과로 떨어짐.
+	 *
+	 * 후보 대조를 여기서 한 번 더 하는 이유는 `GiftPicker`가 인터페이스라 어떤 구현이든 붙을 수 있기 때문임. Bedrock 구현은 이미
+	 * `GiftPickNormalizer`로 걸렀지만 그것에 의존하지 않음.
+	 */
+	private ModelPick pickByModel(List<Scored> scored, String relation, TasteAnswers taste) {
+		List<Scored> candidates = scored.subList(0, Math.min(CANDIDATE_SIZE, scored.size()));
+		GiftPicker.Picked picked = this.giftPicker.pick(candidates.stream().map(Scored::product).toList(), relation,
+				taste.colors(), taste.styles());
+		if (picked == null) {
+			return null;
+		}
+
+		Map<Long, Scored> byId = new LinkedHashMap<>();
+		candidates.forEach((item) -> byId.put(item.product().getId(), item));
+
+		List<Scored> chosen = new ArrayList<>();
+		for (Long productId : picked.productIds()) {
+			Scored item = byId.get(productId);
+			if (item == null) {
+				return null;
+			}
+			chosen.add(item);
+		}
+		if (chosen.size() != Math.min(RESULT_SIZE, candidates.size())) {
+			return null;
+		}
+		// 근거가 없으면 규칙 문구가 나가야 하는데 그건 폴백과 구분이 안 됨. 아예 통째로 폴백함
+		if (picked.reason() == null || picked.reason().isBlank()) {
+			return null;
+		}
+
+		return new ModelPick(chosen, picked.reason());
+	}
+
+	/**
+	 * 결과 조립임. **재배열이 아니라 재조립이어야 함** — 근거가 순위와 함께 정해지므로, 기존 결과를 순서만 바꾸면 과거 2위의 고정 문구가 새
+	 * 1위에 남음.
+	 *
+	 * `firstReason`이 있으면 모델이 쓴 것이고 그때 1위는 **점수와 무관하게 PERSONAL임**(모델이 개인화 문구를 실제로 썼기 때문임).
+	 * 없으면 기존 규칙 그대로 점수가 0보다 클 때만 PERSONAL임.
+	 */
+	private List<Result> assemble(List<Scored> items, String relation, String preferredTag, String firstReason) {
 		List<Result> results = new ArrayList<>();
-		for (int rank = 0; rank < Math.min(3, scored.size()); rank++) {
-			Scored item = scored.get(rank);
-			boolean personal = (rank == 0) && item.score() > 0;
+		for (int rank = 0; rank < items.size(); rank++) {
+			Scored item = items.get(rank);
+			boolean personal = (rank == 0) && (firstReason != null || item.score() > 0);
 
 			results.add(new Result(
 					new ProductView(item.product().getId(), item.product().getName(),
 							(item.product().getPrice() == null) ? 0 : item.product().getPrice(),
 							item.product().getColor(), item.product().getImageUrl()),
 					personal ? "PERSONAL" : "GENERAL",
-					personal ? personalReason(item, relation, preferredTag) : "모델이 함께 매치한 제품이에요"));
+					personal ? firstReasonOf(item, relation, preferredTag, firstReason) : GENERAL_REASON));
 		}
 		return results;
+	}
+
+	private String firstReasonOf(Scored item, String relation, String preferredTag, String firstReason) {
+		return (firstReason != null) ? firstReason : personalReason(item, relation, preferredTag);
 	}
 
 	/**
