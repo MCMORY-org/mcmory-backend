@@ -35,18 +35,10 @@ INSERT INTO taste_profile (friend_id, source, answers) VALUES
 -- 기본 예산 대역(50에서 150만원)에 관계 태그 넷이 모두 들어가야 한다 — 그 대역 밖으로 밀리면
 -- 전체 카탈로그 폴백이 나가 개인화가 우연에 기댄다. 현재 대역 안: 클래식(1,2,7), 캐주얼(6,8),
 -- 러블리(8), 포멀(7).
--- **image_url 규약이 두 갈래다.** 값이 있으면 화면이 그것을 이미지 주소로 쓰고, 없으면 자체 규약
--- (/products/{id}.webp)으로 폴백한다.
---   id 1-10(아래 가방·지갑)은 **전부 NULL**이라 폴백으로 그려진다. 2026-08-12까지 여기에 이모지가 들어
---   있었는데, 그러면 화면이 <img src="👜">를 만들어 깨진 이미지가 되고 폴백도 안 탄다. 이모지는 계약상 최악의 값이다.
---   id 11-18(코디용 의류)은 **MCM 공식 CDN 주소**를 갖는다. 2026-08-13에 실물로 교체하면서 넣었고,
---   없는 SKU에도 자리표시자를 주는 CDN이라 md5 대조로 검증한 값이다(deploy/10-real-clothing.sql 머리말).
--- 배포 쪽은 deploy/03-deploy-seed.sql이 id 1-10을 NULL로 두고 08-image-url-cleanup.sql이 남은 값을 지웠다.
---
--- **prototype/db/init/02-seed.sql은 따라 고치지 않는다. 의도적으로 갈라진 값이다.**
---   근거: Next.js 데모(prototype/mcmory-demo)는 이 컬럼을 이미지 주소가 아니라 **이모지 문자 그대로 렌더**하고
---   `?? "🎁"` 텍스트 폴백을 쓴다(lib/store.ts). 따라 고치면 데모 화면 상품이 전부 🎁로 퇴화한다.
---   그리고 그 데모는 읽기 전용 유산이라 갱신 대상이 아니다(루트 AGENTS.md). 의류 교체분도 같은 이유로 옮기지 않는다.
+-- image_url에는 **주소를 넣거나 NULL로 둔다.** 값이 있으면 화면이 그대로 img 주소로 쓰고,
+-- 없으면 /products/{id}.webp 규약으로 폴백한다. 이모지 같은 비주소 값을 넣으면 폴백도 안 타고 깨진다.
+-- 아래 id 1-10은 NULL이고, 의류 id 11-18은 MCM CDN 주소다.
+-- 이 파일은 deploy/03-deploy-seed.sql과 같은 값을 유지한다.
 INSERT INTO product (id, name, category, color, price, image_url, official_url, style_tags, demo_serial) VALUES
   (1, 'Tracy 비세토스 크로스바디', '가방', '블랙', 890000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀','클래식'), 'MX2024A031'),
   (2, '비세토스 숄더백', '가방', '코냑', 750000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('클래식','미니멀'), 'MX2024B072'),
@@ -63,15 +55,9 @@ INSERT INTO product (id, name, category, color, price, image_url, official_url, 
 -- RecommendService와 GiftService가 카테고리로 그것을 강제한다. 여기 카테고리를 그 셋 중 하나로 바꾸면
 -- "친구에게 슬랙스를 선물하세요"가 나온다.
 --
--- demo_serial을 넣지 않는다: 의류는 FR-028 시리얼 등록 대상이 아니고, 넣으면 그 화면에 옷이 뜬다.
---
--- **이제 실물이다.** 지어낸 임시 데이터였던 것을 2026-08-13에 MCM 공식몰 여성 의류로 교체했다(deploy/10-real-clothing.sql).
--- image_url은 SKU로 조립한 CDN 주소이고 **46건을 전부 내려받아 검증했다** — MCM CDN은 없는 SKU에도 200과
--- 자리표시자 이미지를 주므로 상태 코드는 증거가 아니다. 자리표시자 md5와 대조해 걸렀다.
---
--- **id 11에서 18은 유지한다** — 프론트 이미지 규약이 /products/{id}.webp이고, 스타일링 정렬이 동점이면 id 순이라
--- 새 id로 추가하면 옛 행이 계속 이긴다. 그래서 추가가 아니라 교체다.
--- 카테고리도 바꾸지 않는다: 이 셋이 선물 부적격 판정의 근거다.
+-- **id와 카테고리를 바꾸지 않는다.** 카테고리 셋이 선물 부적격 판정의 근거이고,
+-- 스타일링 정렬이 동점이면 id 순이라 새 id로 추가하면 옛 행이 계속 이긴다. 상품이 바뀌면 내용만 덮는다.
+-- demo_serial은 넣지 않는다 — 의류는 시리얼 등록 대상이 아니고, 넣으면 그 화면에 옷이 뜬다.
 INSERT INTO product (id, name, category, color, price, image_url, official_url, style_tags) VALUES
   (11, 'Washed Denim Jacket', 'WOMAN OUTER', '핑크', 1260000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFJGAMM02PZ042_01/MFJGAMM02PZ042?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/washed-denim-jacket/MFJGAMM02PZ042.html', JSON_ARRAY('캐주얼','스트릿')),
   (12, 'Washed Denim Jeans', 'WOMAN BOTTOM', '핑크', 760000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFPGAMM06PZ040_01/MFPGAMM06PZ040?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/washed-denim-jeans/MFPGAMM06PZ040.html', JSON_ARRAY('캐주얼','러블리')),

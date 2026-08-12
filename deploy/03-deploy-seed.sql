@@ -33,18 +33,15 @@ INSERT INTO store (id, name, address, lat, lng, open_time, close_time, repair_av
 -- RecommendService와 GiftService가 카테고리로 그것을 강제한다. 여기 카테고리를 그 셋 중 하나로 바꾸면
 -- "친구에게 슬랙스를 선물하세요"가 나온다.
 --
--- demo_serial을 넣지 않는다: 의류는 FR-028 시리얼 등록 대상이 아니고, 넣으면 그 화면에 옷이 뜬다.
--- image_url은 NULL로 둔다. imageUrl이 응답에 실리고 값이 있으면 화면이 그것을 쓰는데,
--- 여기 이모지를 넣으면 화면이 `🎒`를 이미지 주소로 받는다. 실제 MCM CDN 주소는 06과 07이 채운다.
---
--- **임시 데이터다.** F28(최은서)의 실제 MCM 의류 자료가 오면 이름과 가격과 색상을 교체하되
--- **id 11에서 18은 유지한다** — 프론트 이미지 규약이 /products/{id}.webp라 id가 바뀌면 전부 다시 매핑해야 한다.
-INSERT INTO product (id, name, category, color, price, official_url, style_tags) VALUES
-  (11, '워싱 데님 재킷', 'WOMAN OUTER', '블루', 1250000, 'https://kr.mcmworldwide.com', JSON_ARRAY('캐주얼','스트릿')),
-  (12, '루렉스 데님 플레어 팬츠', 'WOMAN BOTTOM', '블루', 830000, 'https://kr.mcmworldwide.com', JSON_ARRAY('캐주얼','러블리')),
-  (13, '로고 자카드 니트', 'WOMAN TOP', '베이지', 690000, 'https://kr.mcmworldwide.com', JSON_ARRAY('클래식','미니멀')),
-  (14, '비세토스 실크 블라우스', 'WOMAN TOP', '화이트', 580000, 'https://kr.mcmworldwide.com', JSON_ARRAY('포멀','클래식')),
-  (15, '테일러드 울 코트', 'WOMAN OUTER', '블랙', 1890000, 'https://kr.mcmworldwide.com', JSON_ARRAY('포멀','클래식')),
-  (16, '플리츠 미디 스커트', 'WOMAN BOTTOM', '핑크', 620000, 'https://kr.mcmworldwide.com', JSON_ARRAY('러블리','미니멀')),
-  (17, '오버핏 후디', 'WOMAN TOP', '그레이', 450000, 'https://kr.mcmworldwide.com', JSON_ARRAY('스트릿','캐주얼')),
-  (18, '스트레이트 슬랙스', 'WOMAN BOTTOM', '블랙', 520000, 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀','포멀'));
+-- 코디용 의류다. **선물 대상이 아니다** — 카테고리 셋(WOMAN OUTER·TOP·BOTTOM)이 그 판정의 근거라 바꾸면 안 된다.
+-- id도 바꾸지 않는다: 프론트 이미지 규약이 /products/{id}.webp이고, 스타일링 정렬이 동점이면 id 순이다.
+-- demo_serial은 넣지 않는다 — 의류는 시리얼 등록 대상이 아니고, 넣으면 그 화면에 옷이 뜬다.
+INSERT INTO product (id, name, category, color, price, image_url, official_url, style_tags) VALUES
+  (11, 'Washed Denim Jacket', 'WOMAN OUTER', '핑크', 1260000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFJGAMM02PZ042_01/MFJGAMM02PZ042?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/washed-denim-jacket/MFJGAMM02PZ042.html', JSON_ARRAY('캐주얼','스트릿')),
+  (12, 'Washed Denim Jeans', 'WOMAN BOTTOM', '핑크', 760000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFPGAMM06PZ040_01/MFPGAMM06PZ040?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/washed-denim-jeans/MFPGAMM06PZ040.html', JSON_ARRAY('캐주얼','러블리')),
+  (13, 'Monogram Print T-Shirt', 'WOMAN TOP', '코냑', 440000, 'https://images.mcmworldwide.com/i/mcmworldwide/MHTGSMM07CO00M_01/MHTGSMM07CO00M?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/monogram-print-t-shirt/MHTGSMM07CO00M.html', JSON_ARRAY('클래식','미니멀')),
+  (14, 'Silk Pajama Shirt', 'WOMAN TOP', '핑크', 1040000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFHGAMM01PZ038_01/MFHGAMM01PZ038?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/silk-pajama-shirt/MFHGAMM01PZ038.html', JSON_ARRAY('러블리','클래식')),
+  (15, 'Tweed Gilet', 'WOMAN OUTER', '블랙', 1830000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFVGAMM01BK00M_01/MFVGAMM01BK00M?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/tweed-gilet/MFVGAMM01BK00M.html', JSON_ARRAY('포멀','클래식')),
+  (16, 'Monogram Midi Skirt in ECONYL', 'WOMAN BOTTOM', '핑크', 830000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFKFAMM01PZ00L_01/MFKFAMM01PZ00L?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/monogram-midi-skirt-in-econyl/MFKFAMM01PZ00L.html', JSON_ARRAY('러블리','미니멀')),
+  (17, 'Disco Patch Ponte Hoodie', 'WOMAN TOP', '그레이', 690000, 'https://images.mcmworldwide.com/i/mcmworldwide/MHAGAMM01ET00L_01/MHAGAMM01ET00L?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/disco-patch-ponte-hoodie/MHAGAMM01ET00L.html', JSON_ARRAY('스트릿','캐주얼')),
+  (18, 'Pants in Wool Twill and Monogram Print Leather', 'WOMAN BOTTOM', '블랙', 970000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFPGSMM01BK038_01/MFPGSMM01BK038?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/pants-in-wool-twill-and-monogram-print-leather/MFPGSMM01BK038.html', JSON_ARRAY('미니멀','포멀'));
