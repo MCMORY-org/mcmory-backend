@@ -55,7 +55,7 @@ class GiftEligibilityIntegrationTest extends HttpIntegrationSupport {
 	 */
 	@Test
 	void 예산에_맞는_상품이_없어_전체_폴백으로_떨어져도_의류가_섞이지_않는다() {
-		// 시드 최고가가 189만원(의류)이고 선물 대상 최고가는 115만원임. 300만원 이상은 0건이라 폴백이 발동함
+		// 시드 최고가가 183만원(의류)이고 선물 대상 최고가는 115만원임. 300만원 이상은 0건이라 폴백이 발동함
 		assertNoClothing(post("/api/v1/recommend", "{\"relation\":\"부모님\",\"minBudget\":300,\"maxBudget\":900}"));
 	}
 

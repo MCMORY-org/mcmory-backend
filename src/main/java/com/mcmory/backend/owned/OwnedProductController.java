@@ -315,13 +315,13 @@ public class OwnedProductController {
 													    "results": [
 													      {
 													        "productId": 13,
-													        "name": "로고 자카드 니트",
+													        "name": "Monogram Print T-Shirt",
 													        "category": "WOMAN TOP",
-													        "price": 690000,
-													        "imageUrl": null,
-													        "officialUrl": "https://kr.mcmworldwide.com",
+													        "price": 440000,
+													        "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MHTGSMM07CO00M_01/MHTGSMM07CO00M?$large$&fmt=auto&qlt=default",
+													        "officialUrl": "https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/monogram-print-t-shirt/MHTGSMM07CO00M.html",
 													        "reasonType": "PERSONAL",
-													        "reason": "평소 미니멀 스타일을 즐기시네요"
+													        "reason": "평소 클래식 스타일을 즐기시네요"
 													      }
 													    ]
 													  }
@@ -339,13 +339,13 @@ public class OwnedProductController {
 													    "results": [
 													      {
 													        "productId": 13,
-													        "name": "로고 자카드 니트",
+													        "name": "Monogram Print T-Shirt",
 													        "category": "WOMAN TOP",
-													        "price": 690000,
-													        "imageUrl": null,
-													        "officialUrl": "https://kr.mcmworldwide.com",
+													        "price": 440000,
+													        "imageUrl": "https://images.mcmworldwide.com/i/mcmworldwide/MHTGSMM07CO00M_01/MHTGSMM07CO00M?$large$&fmt=auto&qlt=default",
+													        "officialUrl": "https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/monogram-print-t-shirt/MHTGSMM07CO00M.html",
 													        "reasonType": "PERSONAL",
-													        "reason": "미니멀 스타일에 로고 자카드 니트 어떠세요"
+													        "reason": "클래식한 가방에 어울리는 티셔츠예요"
 													      }
 													    ]
 													  }
