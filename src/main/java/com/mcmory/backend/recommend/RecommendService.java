@@ -3,9 +3,11 @@ package com.mcmory.backend.recommend;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.mcmory.backend.global.apiPayload.code.FriendErrorCode;
 import com.mcmory.backend.global.apiPayload.code.RecommendErrorCode;
@@ -58,9 +60,12 @@ public class RecommendService {
 
 	private final GiftPicker giftPicker;
 
+	private final RecommendationWriter writer;
+
 	public RecommendService(ProductRepository products, RecommendationRepository recommendations,
 			RecommendationResultRepository recommendationResults, FriendRepository friends,
-			TasteProfileRepository tasteProfiles, ObjectMapper objectMapper, GiftPicker giftPicker) {
+			TasteProfileRepository tasteProfiles, ObjectMapper objectMapper, GiftPicker giftPicker,
+			RecommendationWriter writer) {
 		this.products = products;
 		this.recommendations = recommendations;
 		this.recommendationResults = recommendationResults;
@@ -68,6 +73,7 @@ public class RecommendService {
 		this.tasteProfiles = tasteProfiles;
 		this.objectMapper = objectMapper;
 		this.giftPicker = giftPicker;
+		this.writer = writer;
 	}
 
 	/**
@@ -153,23 +159,18 @@ public class RecommendService {
 	 * FR-009 추천 생성임. 호출마다 recommendation 1행과 결과 행을 남김 — 재조회(TC-009)와 gift 연결이 생성 직후의 ID를
 	 * 요구하므로 저장을 귀속 시점으로 미룰 수 없음.
 	 */
-	@Transactional
 	public Created recommend(Long memberId, String relation, int minBudgetInTenThousand, int maxBudgetInTenThousand,
 			Long friendId, boolean aiReason) {
 		TasteAnswers taste = tasteOf(memberId, friendId);
 		Calculated calculated = calculate(relation, minBudgetInTenThousand, maxBudgetInTenThousand, taste, aiReason);
-		List<Result> results = calculated.results();
 
-		Recommendation saved = this.recommendations.saveAndFlush(new Recommendation(memberId,
-				toContextJson(relation, minBudgetInTenThousand, maxBudgetInTenThousand, friendId)));
+		// **이 메서드에 @Transactional을 두지 말 것.** 위 calculate가 Bedrock을 부르므로 트랜잭션 안이면
+		// 커넥션이 왕복 내내 잡힘. 저장만 writer가 한 트랜잭션으로 처리함
+		Long recommendationId = this.writer.save(memberId,
+				toContextJson(relation, minBudgetInTenThousand, maxBudgetInTenThousand, friendId),
+				calculated.results());
 
-		for (int index = 0; index < results.size(); index++) {
-			Result result = results.get(index);
-			this.recommendationResults.save(new RecommendationResult(saved.getId(), result.product().id(), index + 1,
-					result.reasonType(), result.reason()));
-		}
-
-		return new Created(saved.getId(), calculated.reasonSource(), results);
+		return new Created(recommendationId, calculated.reasonSource(), calculated.results());
 	}
 
 	/**
@@ -381,9 +382,11 @@ public class RecommendService {
 		candidates.forEach((item) -> byId.put(item.product().getId(), item));
 
 		List<Scored> chosen = new ArrayList<>();
+		Set<Long> seen = new HashSet<>();
 		for (Long productId : picked.productIds()) {
 			Scored item = byId.get(productId);
-			if (item == null) {
+			// 같은 id를 두 번 주면 같은 Scored가 두 번 담겨 개수 검사를 통과함. 그러면 화면에 같은 카드가 둘 뜸
+			if (item == null || !seen.add(productId)) {
 				return null;
 			}
 			chosen.add(item);

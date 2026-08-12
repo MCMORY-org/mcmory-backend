@@ -42,6 +42,9 @@ class RecommendAiPickIntegrationTest extends HttpIntegrationSupport {
 		/** 규칙 상위 3건을 **뒤집어서** 고름. 재배열 결함을 정확히 찌르는 모드임. */
 		private volatile boolean reverseRuleTop;
 
+		/** 같은 상품을 두 번 고름. 후보 안의 id라 개수만 세는 검사로는 안 잡힘. */
+		private volatile boolean duplicate;
+
 		private volatile List<Long> lastCandidateIds = List.of();
 
 		@Override
@@ -50,6 +53,10 @@ class RecommendAiPickIntegrationTest extends HttpIntegrationSupport {
 			this.lastCandidateIds = candidates.stream().map(Product::getId).toList();
 			if (this.returnNull) {
 				return null;
+			}
+			if (this.duplicate) {
+				Long first = this.lastCandidateIds.get(0);
+				return new Picked(List.of(first, first, this.lastCandidateIds.get(1)), STUB_REASON);
 			}
 			if (this.reverseRuleTop) {
 				List<Long> top = new ArrayList<>(this.lastCandidateIds.subList(0, 3));
@@ -85,6 +92,7 @@ class RecommendAiPickIntegrationTest extends HttpIntegrationSupport {
 		this.picker.calls.set(0);
 		this.picker.returnNull = false;
 		this.picker.reverseRuleTop = false;
+		this.picker.duplicate = false;
 	}
 
 	private Response recommend(String query) {
@@ -137,6 +145,23 @@ class RecommendAiPickIntegrationTest extends HttpIntegrationSupport {
 		assertThat(response.body().get("results").get(0).get("reason").asString()).isEqualTo(STUB_REASON);
 		assertThat(response.body().get("results").get(1).get("reason").asString()).isEqualTo(GENERAL_REASON);
 		assertThat(response.body().get("results").get(2).get("reason").asString()).isEqualTo(GENERAL_REASON);
+	}
+
+	/**
+	 * **같은 상품을 두 번 고르면 통째로 버림.** 후보 안의 id라 개수 검사만으로는 통과해 같은 카드가 화면에 둘 뜨고 저장 행에도 둘 남음.
+	 */
+	@Test
+	void 같은_상품을_두_번_고르면_규칙_결과로_폴백한다() {
+		this.picker.duplicate = true;
+
+		Response response = recommend("?aiReason=true");
+
+		assertThat(response.status()).as(response.text()).isEqualTo(200);
+		assertThat(response.body().get("reasonSource").asString()).isEqualTo("RULE");
+
+		List<Long> returned = new ArrayList<>();
+		response.body().get("results").forEach((node) -> returned.add(node.get("product").get("id").asLong()));
+		assertThat(returned).doesNotHaveDuplicates();
 	}
 
 	/** 선정기가 못 고르면(null) 규칙 결과가 그대로 나감. **화면이 죽지 않는 것이 요구임.** */
