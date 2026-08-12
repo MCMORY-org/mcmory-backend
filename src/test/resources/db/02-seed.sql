@@ -35,12 +35,18 @@ INSERT INTO taste_profile (friend_id, source, answers) VALUES
 -- 기본 예산 대역(50에서 150만원)에 관계 태그 넷이 모두 들어가야 한다 — 그 대역 밖으로 밀리면
 -- 전체 카탈로그 폴백이 나가 개인화가 우연에 기댄다. 현재 대역 안: 클래식(1,2,7), 캐주얼(6,8),
 -- 러블리(8), 포멀(7).
--- image_url은 **전부 NULL이다.** 값이 있으면 화면이 그것을 이미지 주소로 쓰고, 없으면 자체 규약
--- (/products/{id}.webp)으로 폴백한다. 2026-08-12까지 여기에 이모지가 들어 있었는데, 그러면 화면이
--- <img src="👜">를 만들어 깨진 이미지가 되고 폴백도 안 탄다. **이모지는 계약상 최악의 값이다.**
--- 배포 쪽은 deploy/03-deploy-seed.sql이 이미 NULL이고 08-image-url-cleanup.sql이 남은 값을 지웠다.
--- **prototype/db/init/02-seed.sql은 따라 고치지 않는다** — Next.js 데모는 이 컬럼을 이미지 주소가 아니라
--- 이모지 문자 그대로 렌더하므로 NULL로 바꾸면 화면 상품이 전부 🎁로 퇴화한다(의도적으로 갈라진 값이다).
+-- **image_url 규약이 두 갈래다.** 값이 있으면 화면이 그것을 이미지 주소로 쓰고, 없으면 자체 규약
+-- (/products/{id}.webp)으로 폴백한다.
+--   id 1-10(아래 가방·지갑)은 **전부 NULL**이라 폴백으로 그려진다. 2026-08-12까지 여기에 이모지가 들어
+--   있었는데, 그러면 화면이 <img src="👜">를 만들어 깨진 이미지가 되고 폴백도 안 탄다. 이모지는 계약상 최악의 값이다.
+--   id 11-18(코디용 의류)은 **MCM 공식 CDN 주소**를 갖는다. 2026-08-13에 실물로 교체하면서 넣었고,
+--   없는 SKU에도 자리표시자를 주는 CDN이라 md5 대조로 검증한 값이다(deploy/10-real-clothing.sql 머리말).
+-- 배포 쪽은 deploy/03-deploy-seed.sql이 id 1-10을 NULL로 두고 08-image-url-cleanup.sql이 남은 값을 지웠다.
+--
+-- **prototype/db/init/02-seed.sql은 따라 고치지 않는다. 의도적으로 갈라진 값이다.**
+--   근거: Next.js 데모(prototype/mcmory-demo)는 이 컬럼을 이미지 주소가 아니라 **이모지 문자 그대로 렌더**하고
+--   `?? "🎁"` 텍스트 폴백을 쓴다(lib/store.ts). 따라 고치면 데모 화면 상품이 전부 🎁로 퇴화한다.
+--   그리고 그 데모는 읽기 전용 유산이라 갱신 대상이 아니다(루트 AGENTS.md). 의류 교체분도 같은 이유로 옮기지 않는다.
 INSERT INTO product (id, name, category, color, price, image_url, official_url, style_tags, demo_serial) VALUES
   (1, 'Tracy 비세토스 크로스바디', '가방', '블랙', 890000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀','클래식'), 'MX2024A031'),
   (2, '비세토스 숄더백', '가방', '코냑', 750000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('클래식','미니멀'), 'MX2024B072'),
