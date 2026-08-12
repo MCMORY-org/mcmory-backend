@@ -44,7 +44,8 @@
 --   0이 아니면 지우지 말 것 — 사용자 데이터가 끊긴다. 그때는 롤포워드로 해결한다.
 --
 -- 적용(비밀번호는 컨테이너 env로만 넘긴다. 셸 인자에 값을 박지 말 것):
---   docker compose exec -T mysql sh -c 'mysql --default-character-set=utf8mb4 -uroot -p"$MYSQL_ROOT_PASSWORD" mcmory_java' < 09-color-variants.sql
+--   **레포 루트에서** 실행한다. 07은 같은 줄을 상대 경로로 적어 두어 루트에서 그대로 붙여 넣으면 파일을 못 찾는다
+--   docker compose exec -T mysql sh -c 'mysql --default-character-set=utf8mb4 -uroot -p"$MYSQL_ROOT_PASSWORD" mcmory_java' < deploy/09-color-variants.sql
 
 SET NAMES utf8mb4;
 
