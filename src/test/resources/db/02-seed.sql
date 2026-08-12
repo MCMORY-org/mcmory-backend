@@ -35,12 +35,10 @@ INSERT INTO taste_profile (friend_id, source, answers) VALUES
 -- 기본 예산 대역(50에서 150만원)에 관계 태그 넷이 모두 들어가야 한다 — 그 대역 밖으로 밀리면
 -- 전체 카탈로그 폴백이 나가 개인화가 우연에 기댄다. 현재 대역 안: 클래식(1,2,7), 캐주얼(6,8),
 -- 러블리(8), 포멀(7).
--- image_url은 **전부 NULL이다.** 값이 있으면 화면이 그것을 이미지 주소로 쓰고, 없으면 자체 규약
--- (/products/{id}.webp)으로 폴백한다. 2026-08-12까지 여기에 이모지가 들어 있었는데, 그러면 화면이
--- <img src="👜">를 만들어 깨진 이미지가 되고 폴백도 안 탄다. **이모지는 계약상 최악의 값이다.**
--- 배포 쪽은 deploy/03-deploy-seed.sql이 이미 NULL이고 08-image-url-cleanup.sql이 남은 값을 지웠다.
--- **prototype/db/init/02-seed.sql은 따라 고치지 않는다** — Next.js 데모는 이 컬럼을 이미지 주소가 아니라
--- 이모지 문자 그대로 렌더하므로 NULL로 바꾸면 화면 상품이 전부 🎁로 퇴화한다(의도적으로 갈라진 값이다).
+-- image_url에는 **주소를 넣거나 NULL로 둔다.** 값이 있으면 화면이 그대로 img 주소로 쓰고,
+-- 없으면 /products/{id}.webp 규약으로 폴백한다. 이모지 같은 비주소 값을 넣으면 폴백도 안 타고 깨진다.
+-- 아래 id 1-10은 NULL이고, 의류 id 11-18은 MCM CDN 주소다.
+-- 이 파일은 deploy/03-deploy-seed.sql과 같은 값을 유지한다.
 INSERT INTO product (id, name, category, color, price, image_url, official_url, style_tags, demo_serial) VALUES
   (1, 'Tracy 비세토스 크로스바디', '가방', '블랙', 890000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀','클래식'), 'MX2024A031'),
   (2, '비세토스 숄더백', '가방', '코냑', 750000, NULL, 'https://kr.mcmworldwide.com', JSON_ARRAY('클래식','미니멀'), 'MX2024B072'),
@@ -57,21 +55,18 @@ INSERT INTO product (id, name, category, color, price, image_url, official_url, 
 -- RecommendService와 GiftService가 카테고리로 그것을 강제한다. 여기 카테고리를 그 셋 중 하나로 바꾸면
 -- "친구에게 슬랙스를 선물하세요"가 나온다.
 --
--- demo_serial을 넣지 않는다: 의류는 FR-028 시리얼 등록 대상이 아니고, 넣으면 그 화면에 옷이 뜬다.
--- image_url도 넣지 않는다: 값이 없으면 화면이 /products/{id}.webp 규약으로 폴백한다.
--- **죽은 컬럼이 아니다** — 2026-08-12부터 API 응답에 실리고, 값이 있으면 화면이 그것을 그대로 쓴다.
---
--- **임시 데이터다.** F28(최은서)의 실제 MCM 의류 자료가 오면 이름과 가격과 색상을 교체하되
--- **id 11에서 18은 유지한다** — 프론트 이미지 규약이 /products/{id}.webp라 id가 바뀌면 전부 다시 매핑해야 한다.
-INSERT INTO product (id, name, category, color, price, official_url, style_tags) VALUES
-  (11, '워싱 데님 재킷', 'WOMAN OUTER', '블루', 1250000, 'https://kr.mcmworldwide.com', JSON_ARRAY('캐주얼','스트릿')),
-  (12, '루렉스 데님 플레어 팬츠', 'WOMAN BOTTOM', '블루', 830000, 'https://kr.mcmworldwide.com', JSON_ARRAY('캐주얼','러블리')),
-  (13, '로고 자카드 니트', 'WOMAN TOP', '베이지', 690000, 'https://kr.mcmworldwide.com', JSON_ARRAY('클래식','미니멀')),
-  (14, '비세토스 실크 블라우스', 'WOMAN TOP', '화이트', 580000, 'https://kr.mcmworldwide.com', JSON_ARRAY('포멀','클래식')),
-  (15, '테일러드 울 코트', 'WOMAN OUTER', '블랙', 1890000, 'https://kr.mcmworldwide.com', JSON_ARRAY('포멀','클래식')),
-  (16, '플리츠 미디 스커트', 'WOMAN BOTTOM', '핑크', 620000, 'https://kr.mcmworldwide.com', JSON_ARRAY('러블리','미니멀')),
-  (17, '오버핏 후디', 'WOMAN TOP', '그레이', 450000, 'https://kr.mcmworldwide.com', JSON_ARRAY('스트릿','캐주얼')),
-  (18, '스트레이트 슬랙스', 'WOMAN BOTTOM', '블랙', 520000, 'https://kr.mcmworldwide.com', JSON_ARRAY('미니멀','포멀'));
+-- **id와 카테고리를 바꾸지 않는다.** 카테고리 셋이 선물 부적격 판정의 근거이고,
+-- 스타일링 정렬이 동점이면 id 순이라 새 id로 추가하면 옛 행이 계속 이긴다. 상품이 바뀌면 내용만 덮는다.
+-- demo_serial은 넣지 않는다 — 의류는 시리얼 등록 대상이 아니고, 넣으면 그 화면에 옷이 뜬다.
+INSERT INTO product (id, name, category, color, price, image_url, official_url, style_tags) VALUES
+  (11, 'Washed Denim Jacket', 'WOMAN OUTER', '핑크', 1260000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFJGAMM02PZ042_01/MFJGAMM02PZ042?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/washed-denim-jacket/MFJGAMM02PZ042.html', JSON_ARRAY('캐주얼','스트릿')),
+  (12, 'Washed Denim Jeans', 'WOMAN BOTTOM', '핑크', 760000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFPGAMM06PZ040_01/MFPGAMM06PZ040?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/washed-denim-jeans/MFPGAMM06PZ040.html', JSON_ARRAY('캐주얼','러블리')),
+  (13, 'Monogram Print T-Shirt', 'WOMAN TOP', '코냑', 440000, 'https://images.mcmworldwide.com/i/mcmworldwide/MHTGSMM07CO00M_01/MHTGSMM07CO00M?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/monogram-print-t-shirt/MHTGSMM07CO00M.html', JSON_ARRAY('클래식')),
+  (14, 'Silk Pajama Shirt', 'WOMAN TOP', '핑크', 1040000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFHGAMM01PZ038_01/MFHGAMM01PZ038?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/silk-pajama-shirt/MFHGAMM01PZ038.html', JSON_ARRAY('러블리','클래식')),
+  (15, 'Tweed Gilet', 'WOMAN OUTER', '블랙', 1830000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFVGAMM01BK00M_01/MFVGAMM01BK00M?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/tweed-gilet/MFVGAMM01BK00M.html', JSON_ARRAY('포멀','클래식')),
+  (16, 'Monogram Midi Skirt in ECONYL', 'WOMAN BOTTOM', '핑크', 830000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFKFAMM01PZ00L_01/MFKFAMM01PZ00L?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/monogram-midi-skirt-in-econyl/MFKFAMM01PZ00L.html', JSON_ARRAY('러블리','미니멀')),
+  (17, 'Disco Patch Ponte Hoodie', 'WOMAN TOP', '그레이', 690000, 'https://images.mcmworldwide.com/i/mcmworldwide/MHAGAMM01ET00L_01/MHAGAMM01ET00L?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/disco-patch-ponte-hoodie/MHAGAMM01ET00L.html', JSON_ARRAY('스트릿','캐주얼')),
+  (18, 'Pants in Wool Twill and Monogram Print Leather', 'WOMAN BOTTOM', '블랙', 970000, 'https://images.mcmworldwide.com/i/mcmworldwide/MFPGSMM01BK038_01/MFPGSMM01BK038?$large$&fmt=auto&qlt=default', 'https://us.mcmworldwide.com/en_US/women/ready-to-wear/all-ready-to-wear/pants-in-wool-twill-and-monogram-print-leather/MFPGSMM01BK038.html', JSON_ARRAY('미니멀','포멀'));
 
 INSERT INTO store (id, name, address, lat, lng, open_time, close_time, repair_available) VALUES
   (1, 'MCM 강남 본점', '서울 강남구 압구정로', 37.5270000, 127.0280000, '10:30', '20:00', TRUE),
