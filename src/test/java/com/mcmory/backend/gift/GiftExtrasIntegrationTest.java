@@ -77,6 +77,8 @@ class GiftExtrasIntegrationTest extends HttpIntegrationSupport {
 		clearCookies();
 		Response anonymous = post("/api/v1/invitations/" + token + "/owned", null);
 		assertThat(anonymous.status()).isEqualTo(401);
+		// 상태 코드만 보면 봉투가 깨진 응답도 통과함. 화면은 문구가 아니라 code로 분기함
+		assertThat(anonymous.code()).as(anonymous.text()).isEqualTo("AUTH401_1");
 	}
 
 	@Test

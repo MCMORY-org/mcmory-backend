@@ -134,6 +134,7 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 				"{\"privacyAgreed\":true,\"colors\":[\"블랙\"],\"styles\":[],\"bags\":[]}");
 
 		assertThat(view.status()).as(view.text()).isEqualTo(404);
+		assertThat(view.code()).as(view.text()).isEqualTo("FRIEND404_1");
 		assertThat(submitted.status()).as(submitted.text()).isEqualTo(404);
 		assertThat(submitted.code()).isEqualTo("FRIEND404_1");
 	}
@@ -147,7 +148,9 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 		var erased = delete("/api/v1/friends", "{\"id\":" + friendId + "}");
 		assertThat(erased.status()).as(erased.text()).isEqualTo(200);
 
-		assertThat(get("/api/v1/surveys/" + token).status()).isEqualTo(404);
+		var afterDelete = get("/api/v1/surveys/" + token);
+		assertThat(afterDelete.status()).as(afterDelete.text()).isEqualTo(404);
+		assertThat(afterDelete.code()).as(afterDelete.text()).isEqualTo("FRIEND404_1");
 	}
 
 	@Test
