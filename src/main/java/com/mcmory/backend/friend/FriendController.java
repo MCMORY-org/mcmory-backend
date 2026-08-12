@@ -232,7 +232,7 @@ public class FriendController {
 
 	/** `Start-02` 설문 링크 발급임. 오리진은 서버가 모르므로 `path`만 주고 앞자리는 화면이 붙임. */
 	@Operation(summary = "수신자 설문 링크 발급",
-			description = "`Start-02` 설문 토큰을 멱등으로 발급함(명세서 5.5 #33과 5.5-1). 인증 필수이고 남의 친구도 FRIEND404_1임. **오리진은 서버가 모르므로 `path`만 주고 앞자리는 화면이 붙임.** 발급한 링크를 발송자가 문자로 보내면 수신자가 비회원 경로(`GET`과 `POST /api/v1/s/{token}`)에서 동의하고 취향에 답함.\n\n**`axes`는 `HOME-02` 질문 선별임(FEAT-W003).** 켠 축만 `GET /api/v1/s/{token}`이 돌려주고 그 밖의 축에 답하면 제출이 `FRIEND400_4`로 막힘. **토큰은 멱등이고 `axes`는 보낸 호출에서만 덮어씀** — 토글을 고쳐 다시 저장하는 것이 정상 경로이고 이미 보낸 링크는 살아 있어야 함. 축을 안 보낸 호출은 저장값을 유지함")
+			description = "`Start-02` 설문 토큰을 멱등으로 발급함(명세서 5.5 #33과 5.5-1). 인증 필수이고 남의 친구도 FRIEND404_1임. **오리진은 서버가 모르므로 `path`만 주고 앞자리는 화면이 붙임.** 발급한 링크를 발송자가 문자로 보내면 수신자가 비회원 경로(`GET`과 `POST /api/v1/surveys/{token}`)에서 동의하고 취향에 답함.\n\n**`axes`는 `HOME-02` 질문 선별임(FEAT-W003).** 켠 축만 `GET /api/v1/surveys/{token}`이 돌려주고 그 밖의 축에 답하면 제출이 `FRIEND400_4`로 막힘. **토큰은 멱등이고 `axes`는 보낸 호출에서만 덮어씀** — 토글을 고쳐 다시 저장하는 것이 정상 경로이고 이미 보낸 링크는 살아 있어야 함. 축을 안 보낸 호출은 저장값을 유지함")
 	@ApiResponse(responseCode = "200", description = "발급 성공. `token`은 24자이고 `path`는 `/s/{token}`이며 `axes`는 저장된 질문 선별임",
 			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "성공", value = """
 					{

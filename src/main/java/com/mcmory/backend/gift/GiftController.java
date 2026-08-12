@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "선물과 초대",
-		description = "선물 발송(FR-013)과 비회원 초대 열람·동의(FR-015), 편지 사진 업로드(FR-012), 내 제품 등록(FR-020), 옵션 변경 문의(FR-018)를 다룸. **`/api/v1/g/{token}` 계열은 로그인 없이 진입하는 유일한 경로임**(ADR-006, ADR-013 결정 4) — 단 `POST /api/v1/g/{token}/owned`만 예외로 로그인이 필요함. 실패는 문구가 아니라 `code`로 분기할 것.")
+		description = "선물 발송(FR-013)과 비회원 초대 열람·동의(FR-015), 편지 사진 업로드(FR-012), 내 제품 등록(FR-020), 옵션 변경 문의(FR-018)를 다룸. **`/api/v1/invitations/{token}` 계열은 로그인 없이 진입하는 유일한 경로임**(ADR-006, ADR-013 결정 4) — 단 `POST /api/v1/invitations/{token}/owned`만 예외로 로그인이 필요함. 실패는 문구가 아니라 `code`로 분기할 것.")
 @RestController
 public class GiftController {
 
@@ -179,7 +179,7 @@ public class GiftController {
 
 					동의 전에는 `{ "needConsent": true, "nickname": "다정한 호저" }`만 줌 — **`letterBody` 키 자체가 없음**(FR-015). 동의 후에는 `needConsent: false`와 함께 `letterBody`, `product`, `openedAt`이 붙고, 사진을 넣어 보냈으면 `letterImageUrls`가, 색상을 골랐으면 `letterColor`가 붙음.
 
-					함정: **값이 없으면 그 키도 없음**(NON_NULL 계약) — 키 존재를 전제로 파싱하지 말 것. 본문을 보려면 #13 `POST /api/v1/g/{token}` 동의를 먼저 거쳐야 함.""")
+					함정: **값이 없으면 그 키도 없음**(NON_NULL 계약) — 키 존재를 전제로 파싱하지 말 것. 본문을 보려면 #13 `POST /api/v1/invitations/{token}` 동의를 먼저 거쳐야 함.""")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "동의 전이면 `needConsent: true`와 닉네임만, 동의 후면 본문과 상품이 함께 옴",
 					content = @Content(examples = { @ExampleObject(name = "동의 전", value = """
@@ -197,7 +197,7 @@ public class GiftController {
 							  "message": "초대 정보를 찾을 수 없습니다",
 							  "result": null
 							}"""))) })
-	@GetMapping("/api/v1/g/{token}")
+	@GetMapping("/api/v1/invitations/{token}")
 	public CustomResponse<GiftService.InviteView> read(@PathVariable String token) {
 		return CustomResponse.ok(this.gifts.read(token));
 	}
@@ -227,21 +227,22 @@ public class GiftController {
 							  "message": "초대 정보를 찾을 수 없습니다",
 							  "result": null
 							}"""))) })
-	@PostMapping("/api/v1/g/{token}")
+	@PostMapping("/api/v1/invitations/{token}")
 	public CustomResponse<Map<String, Object>> consent(@PathVariable String token) {
 		this.gifts.consentAndOpen(token);
 		return CustomResponse.ok(Map.of("ok", true));
 	}
 
 	/**
-	 * FR-020 "내 제품으로 등록"임. **경로는 `/api/v1/g/**` 아래지만 이것만 로그인이 필요함** — 보유 제품에 주인이 있어야 하기
-	 * 때문임. 시큐리티가 경로 인가를 하지 않으므로(SecurityConfig) `requireId()`가 유일한 문지기임. 지우면 곧 인증 구멍임.
+	 * FR-020 "내 제품으로 등록"임. **경로는 `/api/v1/invitations/**` 아래지만 이것만 로그인이 필요함** — 보유 제품에
+	 * 주인이 있어야 하기 때문임. 시큐리티가 경로 인가를 하지 않으므로(SecurityConfig) `requireId()`가 유일한 문지기임. 지우면 곧
+	 * 인증 구멍임.
 	 */
 	@Operation(summary = "받은 선물을 내 제품으로 등록",
 			description = """
 					명세서 5.4 #29임. 요청 본문 없음.
 
-					함정: **경로는 `/api/v1/g/**` 아래지만 이것만 로그인이 필요함** — 보유 제품에 주인이 있어야 하기 때문임. 동의와 열람(#13)을 마친 뒤에만 되고, 다시 눌러도 새 행을 만들지 않고 같은 결과를 줌(멱등).
+					함정: **경로는 `/api/v1/invitations/**` 아래지만 이것만 로그인이 필요함** — 보유 제품에 주인이 있어야 하기 때문임. 동의와 열람(#13)을 마친 뒤에만 되고, 다시 눌러도 새 행을 만들지 않고 같은 결과를 줌(멱등).
 
 					`GIFT404_1`은 없는 토큰과 **다른 회원에게 지정된 선물**을 함께 덮음 — 존재 여부를 알려주지 않으려고 같은 코드를 씀.
 
@@ -281,7 +282,7 @@ public class GiftController {
 							  "message": "초대 정보를 찾을 수 없습니다",
 							  "result": null
 							}"""))) })
-	@PostMapping("/api/v1/g/{token}/owned")
+	@PostMapping("/api/v1/invitations/{token}/owned")
 	public CustomResponse<GiftService.OwnedFromGift> registerAsOwned(@PathVariable String token) {
 		return CustomResponse.ok(this.gifts.registerAsOwned(this.currentMember.requireId(), token));
 	}
@@ -330,7 +331,7 @@ public class GiftController {
 							  "message": "이미 옵션 변경을 문의했습니다",
 							  "result": null
 							}"""))) })
-	@PostMapping("/api/v1/g/{token}/change-request")
+	@PostMapping("/api/v1/invitations/{token}/change-request")
 	public CustomResponse<GiftService.ChangeRequested> requestChange(@PathVariable String token,
 			@RequestBody ChangeRequest request) {
 		return CustomResponse.ok(this.gifts.requestChange(token, request.reason()));

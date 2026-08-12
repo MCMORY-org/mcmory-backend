@@ -82,13 +82,13 @@ class GiftLifecycleIntegrationTest extends HttpIntegrationSupport {
 
 		// 수신함은 목록일 뿐이고 본문은 동의 게이트를 지나는 토큰 경로에서만 나옴(FR-015).
 		// 회원이라는 사실이 동의 면제 사유가 아님
-		var beforeConsent = get("/api/v1/g/" + token);
+		var beforeConsent = get("/api/v1/invitations/" + token);
 		assertThat(beforeConsent.body().get("needConsent").asBoolean()).isTrue();
 		assertThat(beforeConsent.body().has("letterBody")).isFalse();
 
-		assertThat(post("/api/v1/g/" + token, null).status()).isEqualTo(200);
+		assertThat(post("/api/v1/invitations/" + token, null).status()).isEqualTo(200);
 
-		var afterConsent = get("/api/v1/g/" + token);
+		var afterConsent = get("/api/v1/invitations/" + token);
 		assertThat(afterConsent.body().get("letterBody").asString()).isEqualTo("생일 축하해");
 		assertThat(afterConsent.body().get("openedAt").isNull()).isFalse();
 	}
@@ -231,8 +231,8 @@ class GiftLifecycleIntegrationTest extends HttpIntegrationSupport {
 		assertThat(received.get("productId").asLong()).isPositive();
 		assertThat(received.has("emoji")).isFalse();
 
-		post("/api/v1/g/" + token, null);
-		var product = get("/api/v1/g/" + token).body().get("product");
+		post("/api/v1/invitations/" + token, null);
+		var product = get("/api/v1/invitations/" + token).body().get("product");
 		assertThat(product.get("productId").asLong()).isPositive();
 		assertThat(product.has("emoji")).isFalse();
 	}

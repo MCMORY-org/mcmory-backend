@@ -90,7 +90,7 @@ public class GiftService {
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public record InviteView(
 			@Schema(description = "동의가 아직 필요한지임. `true`면 닉네임만 오고 아래 본문·상품 키가 통째로 없음. "
-					+ "`false`로 바꾸려면 #13 `POST /api/v1/g/{token}` 동의를 먼저 거쳐야 함(FR-015)",
+					+ "`false`로 바꾸려면 #13 `POST /api/v1/invitations/{token}` 동의를 먼저 거쳐야 함(FR-015)",
 					example = "true") boolean needConsent,
 			@Schema(description = "발송자의 익명 닉네임임(ADR-001). 동의 전후 모두 옴", example = "다정한 호저") String nickname,
 			@Schema(description = "편지 본문임. **동의 전에는 키 자체가 없음**(FR-015). 1자 이상 200자 이하로 저장된 값임",

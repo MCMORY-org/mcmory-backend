@@ -51,7 +51,7 @@ public class LetterboxController {
 
 	public record SentView(
 			@Schema(description = "선물 id임", example = "12", requiredMode = Schema.RequiredMode.REQUIRED) Long id,
-			@Schema(description = "초대 토큰임. `GET /api/v1/g/{token}`(명세서 #12) 경로에 그대로 실음",
+			@Schema(description = "초대 토큰임. `GET /api/v1/invitations/{token}`(명세서 #12) 경로에 그대로 실음",
 					example = "k3n8pq2wz7ta5vh0jr4bmx91", requiredMode = Schema.RequiredMode.REQUIRED) String token,
 			@Schema(description = "받는 친구 이름임. **삭제된 친구는 `\"삭제된 친구\"`로 나감**(ADR-003 개인정보 즉시 파기 — 이름과 번호가 DB에서 NULL이 됨). "
 					+ "선택 — 친구 행 자체를 찾지 못하면 `null`임", example = "김민지",
@@ -75,7 +75,7 @@ public class LetterboxController {
 	 * 받은 선물임. ADR-001에 따라 발신자 쪽에서 나가는 값은 익명 닉네임 하나뿐임 — senderMemberId, 발송자 실명, friendId,
 	 * friend.name은 싣지 않음. friend.name은 발송자가 수신자를 부르는 이름이라 발송자의 명명 습관이 새는 통로가 됨.
 	 *
-	 * letterBody도 없음. 본문은 동의 게이트를 지나는 `/api/v1/g/{token}`에서만 제공함(FR-015).
+	 * letterBody도 없음. 본문은 동의 게이트를 지나는 `/api/v1/invitations/{token}`에서만 제공함(FR-015).
 	 *
 	 * **초대 토큰도 싣지 않음**(FIX-W004 ②). 토큰은 양도 가능한 자격이고 그 경로가 비인증이라, 발송자가 번호를 오타 내 엉뚱한 회원이
 	 * 수신자로 매칭되면 그 회원이 링크를 넘겨 임의의 제3자가 편지 전문과 사진을 열 수 있음. 수신자는 발송자가 보낸 링크로 편지를 엶. 편지함 화면을
@@ -110,7 +110,7 @@ public class LetterboxController {
 
 					함정 2: `received` 항목에 나가는 발신자 정보는 익명 닉네임 하나뿐임(ADR-001). `senderMemberId`·발송자 실명·`friendId`·`friend.name`은 싣지 않음.
 
-					함정 3: **편지 본문(`letterBody`)은 목록에 없음.** 본문은 동의 게이트를 지나는 `GET /api/v1/g/{token}`(명세서 #12)에서만 제공함(FR-015). **수신분에는 그 `token`도 없음** — 토큰은 양도 가능한 자격이고 그 경로가 비인증이라, 번호 오타로 오귀속된 회원이 링크를 넘기면 제3자가 편지를 열게 됨. 수신자는 발송자가 보낸 링크로 편지를 엶. 발송분(`sent`)에는 URL 복사를 위해 남아 있음.
+					함정 3: **편지 본문(`letterBody`)은 목록에 없음.** 본문은 동의 게이트를 지나는 `GET /api/v1/invitations/{token}`(명세서 #12)에서만 제공함(FR-015). **수신분에는 그 `token`도 없음** — 토큰은 양도 가능한 자격이고 그 경로가 비인증이라, 번호 오타로 오귀속된 회원이 링크를 넘기면 제3자가 편지를 열게 됨. 수신자는 발송자가 보낸 링크로 편지를 엶. 발송분(`sent`)에는 URL 복사를 위해 남아 있음.
 
 					함정 4: 삭제된 친구는 `friendName`이 `"삭제된 친구"`로 보임(ADR-003 개인정보 즉시 파기).
 
