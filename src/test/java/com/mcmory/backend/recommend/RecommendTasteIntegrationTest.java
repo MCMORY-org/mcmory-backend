@@ -94,7 +94,12 @@ class RecommendTasteIntegrationTest extends HttpIntegrationSupport {
 	void 추천_상품의_imageUrl은_없거나_http로_시작한다() {
 		var response = post("/api/v1/recommend", "{\"relation\":\"친구\"," + DEFAULT_BUDGET + "}");
 
-		response.body().get("results").forEach((result) -> {
+		// 결과가 비면 아래 검사가 한 번도 안 돌아 조용히 통과함. 그물이 뚫린 채 초록인 것이 가장 나쁨
+		assertThat(response.status()).as(response.text()).isEqualTo(200);
+		var results = response.body().get("results");
+		assertThat(results.size()).as(response.text()).isEqualTo(3);
+
+		results.forEach((result) -> {
 			var imageUrl = result.get("product").get("imageUrl");
 			if (imageUrl != null && !imageUrl.isNull()) {
 				assertThat(imageUrl.asString()).as(response.text()).startsWith("http");
