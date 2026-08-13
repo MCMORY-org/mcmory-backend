@@ -6,6 +6,8 @@ import com.mcmory.backend.auth.CurrentMember;
 
 import com.mcmory.backend.global.apiPayload.CustomResponse;
 
+import com.mcmory.backend.config.OpenApiConfig;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "추천",
 		description = "관계 태그와 예산으로 선물을 추천하고(#8), 그 결과를 스냅샷으로 재조회하며(#9), 친구에게 귀속시키는(#10) 발송자 흐름임. 셋 다 로그인 필수임. 실패는 문구가 아니라 `code`로 분기할 것.")
+@SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/recommend")
 public class RecommendController {

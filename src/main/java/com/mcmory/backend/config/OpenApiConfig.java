@@ -11,6 +11,7 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.responses.ApiResponse;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 
 import org.springdoc.core.customizers.OpenApiCustomizer;
@@ -30,6 +31,12 @@ public class OpenApiConfig {
 
 	/** 공통 403 응답의 참조 이름임. 상태 변경 operation이 전부 이 하나를 가리킴. */
 	static final String FORBIDDEN_ORIGIN_RESPONSE = "CommonForbiddenOrigin";
+
+	/** 인증 필수 operation이 가리키는 스킴 이름임. 실제 판정은 각 컨트롤러의 `currentMember.requireId()`가 함. */
+	public static final String ACCESS_COOKIE = "accessCookie";
+
+	/** 재발급 전용임. 액세스 쿠키가 만료된 상태에서도 이 쿠키만으로 도는 경로라 따로 둠. */
+	public static final String REFRESH_COOKIE = "refreshCookie";
 
 	private static final String COMMON403_EXAMPLE = """
 			{
@@ -52,7 +59,13 @@ public class OpenApiConfig {
 						+ "실패는 문구가 아니라 code로 분기할 것."))
 			.servers(List.of(new Server().url("https://api.cartlab.store").description("배포"),
 					new Server().url("http://localhost:8080").description("로컬")))
-			.components(new Components().addResponses(FORBIDDEN_ORIGIN_RESPONSE, forbiddenOrigin()));
+			.components(new Components().addResponses(FORBIDDEN_ORIGIN_RESPONSE, forbiddenOrigin())
+				.addSecuritySchemes(ACCESS_COOKIE,
+						cookieScheme("mcmory_at",
+								"로그인이 심는 액세스 쿠키임. **HttpOnly라 Authorize 입력란으로 넣을 수 없음** — `#2 로그인`을 "
+										+ "`Try it out`으로 한 번 부르면 브라우저가 이후 요청에 자동으로 실음. 자물쇠는 인증이 필요하다는 표시일 뿐임."))
+				.addSecuritySchemes(REFRESH_COOKIE,
+						cookieScheme("mcmory_rt", "재발급에만 쓰는 리프레시 쿠키임. `#4 재발급`이 이 쿠키를 읽고 없으면 `AUTH401_3`임.")));
 	}
 
 	/**
@@ -77,6 +90,13 @@ public class OpenApiConfig {
 		}
 		operation.getResponses()
 			.addApiResponse("403", new ApiResponse().$ref("#/components/responses/" + FORBIDDEN_ORIGIN_RESPONSE));
+	}
+
+	private static SecurityScheme cookieScheme(String cookieName, String description) {
+		return new SecurityScheme().type(SecurityScheme.Type.APIKEY)
+			.in(SecurityScheme.In.COOKIE)
+			.name(cookieName)
+			.description(description);
 	}
 
 	private static ApiResponse forbiddenOrigin() {

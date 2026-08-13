@@ -7,12 +7,15 @@ import com.mcmory.backend.auth.CurrentMember;
 
 import com.mcmory.backend.global.apiPayload.CustomResponse;
 
+import com.mcmory.backend.config.OpenApiConfig;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -135,6 +138,7 @@ public class GiftController {
 							  "message": "친구 정보를 찾을 수 없습니다",
 							  "result": null
 							}"""))) })
+	@SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 	@PostMapping("/api/v1/gift")
 	public CustomResponse<GiftService.Sent> send(@RequestBody SendRequest request) {
 		return CustomResponse.ok(this.gifts.send(this.currentMember.requireId(), request.productId(),
@@ -193,6 +197,7 @@ public class GiftController {
 							  "message": "로그인이 필요합니다",
 							  "result": null
 							}"""))) })
+	@SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 	@PostMapping("/api/v1/gift/letter-images")
 	public CustomResponse<Map<String, Object>> uploadLetterImages(
 			@RequestPart(value = "files", required = false) List<MultipartFile> files) {
@@ -318,6 +323,7 @@ public class GiftController {
 							  "message": "초대 정보를 찾을 수 없습니다",
 							  "result": null
 							}"""))) })
+	@SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 	@PostMapping("/api/v1/invitations/{token}/owned")
 	public CustomResponse<GiftService.OwnedFromGift> registerAsOwned(@PathVariable String token) {
 		return CustomResponse.ok(this.gifts.registerAsOwned(this.currentMember.requireId(), token));

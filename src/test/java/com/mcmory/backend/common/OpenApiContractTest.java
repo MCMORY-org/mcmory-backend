@@ -74,6 +74,27 @@ class OpenApiContractTest extends HttpIntegrationSupport {
 		assertThat(unexpected403).as("403이 붙으면 안 되는 조회 operation").isEmpty();
 	}
 
+	/**
+	 * 자물쇠는 계약 표시일 뿐임 — HttpOnly 쿠키라 Authorize 입력란으로 넣을 수 없고, 실제 401 판정은 각 컨트롤러의
+	 * `requireId()`가 함. 그래도 어느 operation이 인증 필수인지 기계가 읽을 수 있어야 함.
+	 */
+	@Test
+	void 인증_필수_operation이_쿠키_스킴을_가리킨다() {
+		var docs = get("/v3/api-docs");
+		JsonNode schemes = docs.body().get("components").get("securitySchemes");
+		assertThat(schemes.has("accessCookie")).isTrue();
+		assertThat(schemes.has("refreshCookie")).isTrue();
+
+		JsonNode paths = paths();
+		assertThat(paths.get("/api/v1/friends").get("get").get("security").toString()).contains("accessCookie");
+		assertThat(paths.get("/api/v1/gift").get("post").get("security").toString()).contains("accessCookie");
+		assertThat(paths.get("/api/v1/auth/reissue").get("post").get("security").toString()).contains("refreshCookie");
+
+		// 토큰이 권한 근거인 비회원 경로는 인증을 요구하지 않음(ADR-013 결정 4)
+		assertThat(paths.get("/api/v1/surveys/{token}").get("post").has("security")).isFalse();
+		assertThat(paths.get("/api/v1/invitations/{token}").get("get").has("security")).isFalse();
+	}
+
 	@Test
 	void 공통_403_응답이_한_곳에만_정의된다() {
 		var docs = get("/v3/api-docs");
