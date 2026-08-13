@@ -101,8 +101,10 @@ public class OpenApiConfig {
 
 	private static ApiResponse forbiddenOrigin() {
 		return new ApiResponse()
-			.description("`COMMON403` — 허용 목록 밖 Origin에서 온 요청임. 사용자 권한 문제가 아니라 호출한 곳의 문제이므로 "
-					+ "배포 도메인이 `app.auth.allowed-origins`에 있는지부터 볼 것. `Origin` 헤더가 없는 요청은 검사를 통과함.")
+			.description("`COMMON403` — 허용 목록 밖 Origin에서 온 상태 변경 요청임. 사용자 권한 문제가 아니라 호출한 곳의 문제이므로 "
+					+ "배포 도메인이 `app.auth.allowed-origins`에 있는지부터 볼 것. "
+					+ "**통과하는 경우가 둘 더 있음** — `Origin` 헤더가 아예 없는 요청(앱 네이티브 호출, 서버 간 호출)과, "
+					+ "허용 목록 밖이어도 Origin의 호스트가 요청받은 서버 이름과 같은 요청임(프록시 뒤에서 포트가 달라 보이므로 호스트만 비교함).")
 			.content(new Content().addMediaType("application/json",
 					new MediaType().examples(Map.of("COMMON403", new Example().value(COMMON403_EXAMPLE)))));
 	}
