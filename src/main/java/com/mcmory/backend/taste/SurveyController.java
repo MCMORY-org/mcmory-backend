@@ -111,14 +111,6 @@ public class SurveyController {
 							  "message": "취향을 하나 이상 선택해주세요",
 							  "result": null
 							}""") })),
-			@ApiResponse(responseCode = "403", description = "`COMMON403` — Origin 검사 실패임. 필터가 봉투를 직접 씀",
-					content = @Content(examples = @ExampleObject(name = "COMMON403", value = """
-							{
-							  "isSuccess": false,
-							  "code": "COMMON403",
-							  "message": "현재 접속한 환경에서는 요청을 처리할 수 없습니다. 공식 앱이나 웹에서 다시 시도해주세요",
-							  "result": null
-							}"""))),
 			@ApiResponse(responseCode = "404", description = "`FRIEND404_1` — 없는 토큰이거나 삭제된 친구임",
 					content = @Content(examples = @ExampleObject(name = "FRIEND404_1", value = """
 							{
