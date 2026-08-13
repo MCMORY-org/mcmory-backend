@@ -8,12 +8,15 @@ import com.mcmory.backend.auth.CurrentMember;
 import com.mcmory.backend.global.apiPayload.CustomResponse;
 import com.mcmory.backend.global.apiPayload.code.ValidationErrorCode;
 import com.mcmory.backend.global.apiPayload.exception.CustomException;
+import com.mcmory.backend.config.OpenApiConfig;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Tag(name = "동의",
 		description = "항목별 동의 현황 조회와 재동의임(명세서 5.2, #6·#7). 절 전체가 `화면 미구현`이고 계약만 유지함 — 가입 1회 동의로 시연 경로가 완결되며 재동의 트리거인 약관 버전 변경이 시연에 없음. 가입의 `privacyAgreed`(#1)는 별개이며 필수임. 두 경로 모두 인증 필수이고, 미인증이면 `AUTH401_1`을 반환함. 프론트는 문구가 아니라 `code`로 분기할 것.")
+@SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/consents")
 public class ConsentController {

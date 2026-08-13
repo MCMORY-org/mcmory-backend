@@ -37,7 +37,7 @@ public class SurveyController {
 	/** 세 축 모두 다중 선택임(v1.1 실측). */
 	public record SubmitRequest(@Schema(
 			description = "개인정보 수집 동의임. `true`가 아니면 `FRIEND400_3`임. 값만 검증하고 `consent` 이력 행으로 남기지 않음 — 그 테이블의 CHECK가 `member_id`나 `gift_id`를 요구하는데 설문 시점에는 선물이 없음",
-			example = "true", requiredMode = Schema.RequiredMode.REQUIRED) boolean privacyAgreed,
+			example = "true", requiredMode = Schema.RequiredMode.REQUIRED) Boolean privacyAgreed,
 			@Schema(description = "취향 색상 다중 선택임. 허용값 6종은 코냑·블랙·베이지·핑크·골드·그레이이고 선택지 밖 값은 조용히 버리지 않고 `FRIEND400_4`로 막음. 추천 점수에 반영됨. **편지지 색 4종(GOLD·BLACK·BEIGE·PINK), 상품 색상과는 다른 축이라 섞지 말 것**. 개별로는 선택이지만 `styles`와 둘 다 비면 `FRIEND400_4`임",
 					example = "[\"코냑\",\"블랙\"]", requiredMode = Schema.RequiredMode.NOT_REQUIRED) List<String> colors,
 			@Schema(description = "옷 스타일 다중 선택임. 허용값 6종은 캐주얼·미니멀·스트릿·클래식·러블리·포멀이고 선택지 밖 값은 `FRIEND400_4`임. 추천 점수에 반영됨. 개별로는 선택이지만 `colors`와 둘 다 비면 `FRIEND400_4`임",
@@ -111,14 +111,6 @@ public class SurveyController {
 							  "message": "취향을 하나 이상 선택해주세요",
 							  "result": null
 							}""") })),
-			@ApiResponse(responseCode = "403", description = "`COMMON403` — Origin 검사 실패임. 필터가 봉투를 직접 씀",
-					content = @Content(examples = @ExampleObject(name = "COMMON403", value = """
-							{
-							  "isSuccess": false,
-							  "code": "COMMON403",
-							  "message": "현재 접속한 환경에서는 요청을 처리할 수 없습니다. 공식 앱이나 웹에서 다시 시도해주세요",
-							  "result": null
-							}"""))),
 			@ApiResponse(responseCode = "404", description = "`FRIEND404_1` — 없는 토큰이거나 삭제된 친구임",
 					content = @Content(examples = @ExampleObject(name = "FRIEND404_1", value = """
 							{
@@ -129,7 +121,10 @@ public class SurveyController {
 							}"""))) })
 	@PostMapping("/api/v1/surveys/{token}")
 	public CustomResponse<Map<String, Object>> submit(@PathVariable String token, @RequestBody SubmitRequest request) {
-		this.survey.submit(token, request.privacyAgreed(), request.colors(), request.styles(), request.bags());
+		// 래퍼로 받아 여기서 접음. 원시형이면 명시적 null이 파싱 단계에서 깨져 계약인 FRIEND400_3 대신 VALID400_1이 나감.
+		// 접는 자리를 서비스 앞에 두는 이유는 검증 순서를 지키기 위함임 — 서비스가 토큰을 먼저 보므로 없는 토큰은 그대로 404임
+		this.survey.submit(token, Boolean.TRUE.equals(request.privacyAgreed()), request.colors(), request.styles(),
+				request.bags());
 		return CustomResponse.ok(Map.of("ok", true));
 	}
 

@@ -7,11 +7,14 @@ import java.util.Map;
 import com.mcmory.backend.auth.CurrentMember;
 
 import com.mcmory.backend.global.apiPayload.CustomResponse;
+import com.mcmory.backend.config.OpenApiConfig;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  * FR-017 알림임. 목록 조회와 전체 읽음 둘뿐이고 개별 읽음과 페이징은 만들지 않음 — 시연에 필요한 것은 뱃지 수와 목록이고, 시간이 밀리면 이
  * 컨트롤러가 첫 번째 컷 대상임(수신함의 receivedUnopened만으로도 시연은 성립함).
  */
+@SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/notifications")
 @Tag(name = "알림",
