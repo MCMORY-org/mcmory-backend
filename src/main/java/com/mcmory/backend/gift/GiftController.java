@@ -93,14 +93,32 @@ public class GiftController {
 							  "result": { "token": "k3n8pq2wz7ta5vh0jr4bmx91", "nickname": "다정한 호저" }
 							}"""))),
 			@ApiResponse(responseCode = "400",
-					description = "`GIFT400_1` 상품을 찾을 수 없습니다 / `GIFT400_2` 편지는 1자에서 200자까지 쓸 수 있습니다 / `GIFT400_7` 사진은 10MB 이하 이미지 파일만 올릴 수 있습니다(외부 URL 포함) / `GIFT400_8` 편지지 색상 형식을 확인해주세요 / `REC400_3` 추천 정보를 찾을 수 없습니다(남의 추천 ID) / `FRIEND400_1` 이름은 1자에서 20자까지 입력해주세요",
-					content = @Content(examples = @ExampleObject(name = "GIFT400_2", value = """
+					description = "`GIFT400_1` 상품을 찾을 수 없습니다 / `GIFT400_2` 편지는 1자에서 200자까지 쓸 수 있습니다 / `GIFT400_6` 사진은 5장까지 넣을 수 있습니다 / `GIFT400_7` 사진은 10MB 이하 이미지 파일만 올릴 수 있습니다(외부 URL 포함) / `GIFT400_8` 편지지 색상 형식을 확인해주세요 / `REC400_3` 추천 정보를 찾을 수 없습니다(남의 추천 ID) / `FRIEND400_1` 이름은 1자에서 20자까지 입력해주세요",
+					content = @Content(examples = { @ExampleObject(name = "GIFT400_2", value = """
 							{
 							  "isSuccess": false,
 							  "code": "GIFT400_2",
 							  "message": "편지는 1자에서 200자까지 쓸 수 있습니다",
 							  "result": null
-							}"""))),
+							}"""), @ExampleObject(name = "GIFT400_1", value = """
+							{
+							  "isSuccess": false,
+							  "code": "GIFT400_1",
+							  "message": "상품을 찾을 수 없습니다",
+							  "result": null
+							}"""), @ExampleObject(name = "GIFT400_6", value = """
+							{
+							  "isSuccess": false,
+							  "code": "GIFT400_6",
+							  "message": "사진은 5장까지 넣을 수 있습니다",
+							  "result": null
+							}"""), @ExampleObject(name = "GIFT400_8", value = """
+							{
+							  "isSuccess": false,
+							  "code": "GIFT400_8",
+							  "message": "편지지 색상 형식을 확인해주세요",
+							  "result": null
+							}""") })),
 			@ApiResponse(responseCode = "401", description = "`AUTH401_1` 로그인이 필요합니다",
 					content = @Content(examples = @ExampleObject(name = "AUTH401_1", value = """
 							{
@@ -148,13 +166,25 @@ public class GiftController {
 							}"""))),
 			@ApiResponse(responseCode = "400",
 					description = "`GIFT400_5` 사진을 선택해주세요(파일 없음) / `GIFT400_6` 사진은 5장까지 넣을 수 있습니다 / `GIFT400_7` 사진은 10MB 이하 이미지 파일만 올릴 수 있습니다(형식이나 크기 위반)",
-					content = @Content(examples = @ExampleObject(name = "GIFT400_7", value = """
+					content = @Content(examples = { @ExampleObject(name = "GIFT400_7", value = """
 							{
 							  "isSuccess": false,
 							  "code": "GIFT400_7",
 							  "message": "사진은 10MB 이하 이미지 파일만 올릴 수 있습니다",
 							  "result": null
-							}"""))),
+							}"""), @ExampleObject(name = "GIFT400_5", value = """
+							{
+							  "isSuccess": false,
+							  "code": "GIFT400_5",
+							  "message": "사진을 선택해주세요",
+							  "result": null
+							}"""), @ExampleObject(name = "GIFT400_6", value = """
+							{
+							  "isSuccess": false,
+							  "code": "GIFT400_6",
+							  "message": "사진은 5장까지 넣을 수 있습니다",
+							  "result": null
+							}""") })),
 			@ApiResponse(responseCode = "401", description = "`AUTH401_1` 로그인이 필요합니다",
 					content = @Content(examples = @ExampleObject(name = "AUTH401_1", value = """
 							{
@@ -259,13 +289,19 @@ public class GiftController {
 									}"""))),
 			@ApiResponse(responseCode = "400",
 					description = "`GIFT400_3` 선물을 먼저 열어주세요(아직 열지 않음) / `GIFT400_1` 상품을 찾을 수 없습니다(연결된 상품 없음)",
-					content = @Content(examples = @ExampleObject(name = "GIFT400_3", value = """
+					content = @Content(examples = { @ExampleObject(name = "GIFT400_3", value = """
 							{
 							  "isSuccess": false,
 							  "code": "GIFT400_3",
 							  "message": "선물을 먼저 열어주세요",
 							  "result": null
-							}"""))),
+							}"""), @ExampleObject(name = "GIFT400_1", value = """
+							{
+							  "isSuccess": false,
+							  "code": "GIFT400_1",
+							  "message": "상품을 찾을 수 없습니다",
+							  "result": null
+							}""") })),
 			@ApiResponse(responseCode = "401", description = "`AUTH401_1` 로그인이 필요합니다",
 					content = @Content(examples = @ExampleObject(name = "AUTH401_1", value = """
 							{
@@ -308,13 +344,19 @@ public class GiftController {
 							}"""))),
 			@ApiResponse(responseCode = "400",
 					description = "`GIFT400_4` 문의 사유를 선택해주세요(사유가 4종 밖) / `GIFT400_3` 선물을 먼저 열어주세요",
-					content = @Content(examples = @ExampleObject(name = "GIFT400_4", value = """
+					content = @Content(examples = { @ExampleObject(name = "GIFT400_4", value = """
 							{
 							  "isSuccess": false,
 							  "code": "GIFT400_4",
 							  "message": "문의 사유를 선택해주세요",
 							  "result": null
-							}"""))),
+							}"""), @ExampleObject(name = "GIFT400_3", value = """
+							{
+							  "isSuccess": false,
+							  "code": "GIFT400_3",
+							  "message": "선물을 먼저 열어주세요",
+							  "result": null
+							}""") })),
 			@ApiResponse(responseCode = "404", description = "`GIFT404_1` 초대 정보를 찾을 수 없습니다",
 					content = @Content(examples = @ExampleObject(name = "GIFT404_1", value = """
 							{

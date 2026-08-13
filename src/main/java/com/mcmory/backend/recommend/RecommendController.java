@@ -7,6 +7,7 @@ import com.mcmory.backend.auth.CurrentMember;
 import com.mcmory.backend.global.apiPayload.CustomResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -128,8 +129,13 @@ public class RecommendController {
 											{ "isSuccess": false, "code": "FRIEND404_1", "message": "친구 정보를 찾을 수 없습니다", "result": null }
 											"""))) })
 	@PostMapping
-	public CustomResponse<Map<String, Object>> recommend(@RequestBody RecommendRequest request,
-			@RequestParam(defaultValue = "false") boolean aiReason) {
+	public CustomResponse<Map<String, Object>> recommend(@RequestBody RecommendRequest request, @Parameter(
+			description = "모델이 **선물을 고를지**임. 기본은 `false`이고 그때는 모델을 아예 부르지 않음" + " — 규칙이 예산과 관계와 취향으로 매긴 상위 3건이 그대로 나감."
+					+ " `true`면 규칙이 좁힌 상위 8건 **안에서만** 모델이 3건을 고르고 1순위 근거 문장을 씀."
+					+ " 후보 밖·중복·개수 불일치·빈 근거 중 하나라도 걸리면 규칙 결과로 되돌리고 그때도 200임 —"
+					+ " 어느 쪽이었는지는 응답 `reasonSource`(`LLM` 또는 `RULE`)로만 구분함."
+					+ " **스타일링(#36)의 같은 이름 파라미터와 뜻이 다름**(그쪽은 문구 작성자만 바뀜).",
+			example = "true") @RequestParam(defaultValue = "false") boolean aiReason) {
 		RecommendService.Created created = this.recommendService.recommend(this.currentMember.requireId(),
 				(request.relation() == null) ? "친구" : request.relation(),
 				(request.minBudget() == null) ? 0 : request.minBudget(),
@@ -156,6 +162,30 @@ public class RecommendController {
 					응답 `result`는 `{ "recommendationId", "context", "savedFriendId", "createdAt", "results": [{..., "rankNo": 1}] }` 형태임.
 					""")
 	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "재조회 성공임. `result`는 생성 시점의 구성과 순위와 근거임",
+					content = @Content(mediaType = "application/json",
+							examples = @ExampleObject(name = "성공",
+									value = """
+											{
+											  "isSuccess": true,
+											  "code": "200",
+											  "message": "OK",
+											  "result": {
+											    "recommendationId": 3,
+											    "context": { "relation": "연인", "minBudget": 50, "maxBudget": 150, "friendId": 101 },
+											    "savedFriendId": 101,
+											    "createdAt": "2026-08-11T10:20:30",
+											    "results": [
+											      {
+											        "product": { "id": 1, "name": "Tracy 비세토스 크로스바디", "price": 890000, "color": "블랙", "imageUrl": null },
+											        "reasonType": "PERSONAL",
+											        "reason": "블랙 계열을 좋아하신다고 하셔서 골랐어요",
+											        "rankNo": 1
+											      }
+											    ]
+											  }
+											}
+											"""))),
 			@ApiResponse(responseCode = "400", description = "`VALID400_0` 경로 값이 선언 타입으로 변환 안 됨", content = @Content(
 					mediaType = "application/json", examples = @ExampleObject(name = "VALID400_0", value = """
 							{ "isSuccess": false, "code": "VALID400_0", "message": "요청 값의 형식을 확인해주세요", "result": null }

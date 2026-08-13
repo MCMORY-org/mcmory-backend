@@ -24,8 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * FR-009 추천. 규칙이 시드 카탈로그에서 후보를 좁히는 것이 기본이고, 요청이 옵트인하면(`aiReason=true`) 그 후보 안에서만 모델이 고름(FEAT-W004).
- * 모델 응답이 후보를 벗어나거나 깨지면 통째로 버리고 규칙 결과로 돌아감 — 어느 쪽이었는지는 응답 `reasonSource`가 말함.
+ * FR-009 추천. 규칙이 시드 카탈로그에서 후보를 좁히는 것이 기본이고, 요청이 옵트인하면(`aiReason=true`) 그 후보 안에서만 모델이
+ * 고름(FEAT-W004). 모델 응답이 후보를 벗어나거나 깨지면 통째로 버리고 규칙 결과로 돌아감 — 어느 쪽이었는지는 응답 `reasonSource`가
+ * 말함.
  *
  * ADR-009: 근거는 PERSONAL과 GENERAL로 이원화하고 **첫 항목만** 개인화 근거를 붙임(디자인 19 실측 반영).
  */
