@@ -7,12 +7,15 @@ import com.mcmory.backend.auth.CurrentMember;
 
 import com.mcmory.backend.global.apiPayload.CustomResponse;
 
+import com.mcmory.backend.config.OpenApiConfig;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "예약",
 		description = "매장 예약 조회·생성·취소. 명세서 5.7절(#23, #24, #25)이 계약 정본임. 전 엔드포인트 인증 필수이며 미인증은 AUTH401_1 반환. 절 전체가 이번 제출 `범위밖`이라 화면은 만들지 않으나 계약과 구현은 그대로 유지함(ADR-012 개정 이력 2026-08-11). 슬롯은 10개 고정(`10:00`, `11:00`, `13:00`부터 `20:00`까지 매시)이고 12시는 비활성이 아니라 아예 없음(점심 휴게).")
+@SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/reservations")
 public class ReservationController {

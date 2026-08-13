@@ -165,6 +165,35 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 		assertThat(get("/api/v1/surveys/" + token).body().get("answered").asBoolean()).isFalse();
 	}
 
+	/**
+	 * 계약은 "`privacyAgreed`가 `true`가 아니면 `FRIEND400_3`"임(명세서 5.5-1). 필드를 빠뜨리거나 명시적 `null`을
+	 * 보내는 것도 `true`가 아닌 것이라 같은 코드여야 함 — 원시형으로 받으면 명시적 null이 파싱 단계에서 깨져 `VALID400_1`이
+	 * 나갔음(2026-08-13 감사).
+	 */
+	@Test
+	void 동의_필드가_없거나_null이어도_FRIEND400_3이다() {
+		String token = 설문토큰발급("동의누락친구", "01055550014");
+
+		var missing = post("/api/v1/surveys/" + token, "{\"colors\":[\"블랙\"],\"styles\":[],\"bags\":[]}");
+		var explicitNull = post("/api/v1/surveys/" + token,
+				"{\"privacyAgreed\":null,\"colors\":[\"블랙\"],\"styles\":[],\"bags\":[]}");
+
+		assertThat(missing.status()).as(missing.text()).isEqualTo(400);
+		assertThat(missing.code()).isEqualTo("FRIEND400_3");
+		assertThat(explicitNull.status()).as(explicitNull.text()).isEqualTo(400);
+		assertThat(explicitNull.code()).isEqualTo("FRIEND400_3");
+		assertThat(get("/api/v1/surveys/" + token).body().get("answered").asBoolean()).isFalse();
+	}
+
+	/** 없는 토큰과 동의 누락이 겹치면 토큰 판정이 먼저임. 순서가 뒤집히면 토큰 존재 여부가 코드로 새어 나감. */
+	@Test
+	void 없는_토큰과_동의_누락이_겹치면_404다() {
+		var response = post("/api/v1/surveys/없는토큰값", "{\"colors\":[\"블랙\"],\"styles\":[],\"bags\":[]}");
+
+		assertThat(response.status()).as(response.text()).isEqualTo(404);
+		assertThat(response.code()).isEqualTo("FRIEND404_1");
+	}
+
 	@Test
 	void 선택지_밖_값과_빈_답변은_400이다() {
 		String token = 설문토큰발급("검증친구", "01055550008");

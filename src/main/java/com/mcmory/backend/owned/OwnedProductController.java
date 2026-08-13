@@ -12,6 +12,8 @@ import com.mcmory.backend.product.ProductRepository;
 import com.mcmory.backend.styling.StylingService;
 
 import com.mcmory.backend.global.apiPayload.CustomResponse;
+import com.mcmory.backend.config.OpenApiConfig;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "보유 제품",
 		description = "로그인 사용자의 보유 제품 목록과 데모 시리얼 등록, 삭제, 카테고리별 관리 방법임(API명세서 5.6). 모든 엔드포인트가 인증 필수이며 비로그인은 `AUTH401_1`임. 응답은 표준 봉투 `{isSuccess, code, message, result}`이고 성공 `code`는 문자열 \"200\"임.")
+@SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/owned")
 public class OwnedProductController {

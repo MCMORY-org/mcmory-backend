@@ -12,12 +12,15 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import com.mcmory.backend.global.apiPayload.CustomResponse;
 
+import com.mcmory.backend.config.OpenApiConfig;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.http.ResponseEntity;
@@ -247,6 +250,7 @@ public class AuthController {
 							  "message": "다시 로그인해주세요",
 							  "result": null
 							}"""))) })
+	@SecurityRequirement(name = OpenApiConfig.REFRESH_COOKIE)
 	@PostMapping("/reissue")
 	public ResponseEntity<CustomResponse<Map<String, Object>>> reissue(HttpServletRequest request) {
 		AuthService.Reissued result = this.authService.reissue(this.cookies.read(request, CookieUtils.REFRESH_COOKIE));

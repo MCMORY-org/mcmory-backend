@@ -11,11 +11,14 @@ import com.mcmory.backend.product.Product;
 import com.mcmory.backend.product.ProductRepository;
 
 import com.mcmory.backend.global.apiPayload.CustomResponse;
+import com.mcmory.backend.config.OpenApiConfig;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * ponytail: 프로토타입은 회원 수신자 흐름이 없어 발송분만 보여줌. 수신함은 회원 수신자가 생기는 시점에 추가함.
  */
+@SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/letters")
 @Tag(name = "편지함",

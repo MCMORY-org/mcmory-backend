@@ -7,11 +7,14 @@ import com.mcmory.backend.auth.CurrentMember;
 
 import com.mcmory.backend.global.apiPayload.CustomResponse;
 
+import com.mcmory.backend.config.OpenApiConfig;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "친구",
 		description = "발송자가 선물을 보낼 친구를 등록·수정·삭제하고, 취향 요약을 저장하거나 수신자 설문 링크를 발급하는 도메인임. 전부 인증 필수이며 자기 친구만 다룸. 실패는 문구가 아니라 봉투의 `code`로 분기할 것 — 주요 코드는 FRIEND400_1(이름 길이), FRIEND400_2(전화번호 형식), FRIEND404_1(친구 없음 또는 남의 친구), FRIEND409_1(전화번호 중복), FRIEND409_2(수정 시 번호 불일치)임. 회원당 친구 수 상한은 서버가 걸지 않으나 화면이 네 칸이라 5명째부터는 조회도 수정도 안 되는 고아 행이 됨")
+@SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/friends")
 public class FriendController {
@@ -133,6 +137,14 @@ public class FriendController {
 							  "message": "이미 등록한 친구의 전화번호입니다",
 							  "result": null
 							}""")))
+	@ApiResponse(responseCode = "401", description = "로그인 필요함",
+			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "AUTH401_1", value = """
+					{
+					  "isSuccess": false,
+					  "code": "AUTH401_1",
+					  "message": "로그인이 필요합니다",
+					  "result": null
+					}""")))
 	@PostMapping
 	public CustomResponse<Map<String, Object>> create(@RequestBody CreateRequest request) {
 		Friend created = this.friends.create(this.currentMember.requireId(), request.name(), request.phone());
@@ -160,6 +172,14 @@ public class FriendController {
 							  "message": "친구 정보를 찾을 수 없습니다",
 							  "result": null
 							}""")))
+	@ApiResponse(responseCode = "401", description = "로그인 필요함",
+			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "AUTH401_1", value = """
+					{
+					  "isSuccess": false,
+					  "code": "AUTH401_1",
+					  "message": "로그인이 필요합니다",
+					  "result": null
+					}""")))
 	@DeleteMapping
 	public CustomResponse<Map<String, Object>> delete(@RequestBody IdRequest request) {
 		this.friends.erase(this.currentMember.requireId(), request.id());
@@ -216,6 +236,14 @@ public class FriendController {
 							  "message": "전화번호가 다른 친구는 새로 등록해주세요",
 							  "result": null
 							}""")))
+	@ApiResponse(responseCode = "401", description = "로그인 필요함",
+			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "AUTH401_1", value = """
+					{
+					  "isSuccess": false,
+					  "code": "AUTH401_1",
+					  "message": "로그인이 필요합니다",
+					  "result": null
+					}""")))
 	@PatchMapping("/{id}")
 	public CustomResponse<Map<String, Object>> rename(@PathVariable Long id, @RequestBody UpdateRequest request) {
 		Friend updated = this.friends.rename(this.currentMember.requireId(), id, request.name(), request.phone());
@@ -263,6 +291,14 @@ public class FriendController {
 							  "message": "친구 정보를 찾을 수 없습니다",
 							  "result": null
 							}""")))
+	@ApiResponse(responseCode = "401", description = "로그인 필요함",
+			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "AUTH401_1", value = """
+					{
+					  "isSuccess": false,
+					  "code": "AUTH401_1",
+					  "message": "로그인이 필요합니다",
+					  "result": null
+					}""")))
 	@PostMapping("/{id}/survey")
 	public CustomResponse<Map<String, Object>> issueSurveyLink(@PathVariable Long id,
 			@RequestBody(required = false) SurveyRequest request) {
@@ -300,6 +336,14 @@ public class FriendController {
 							  "message": "친구 정보를 찾을 수 없습니다",
 							  "result": null
 							}""")))
+	@ApiResponse(responseCode = "401", description = "로그인 필요함",
+			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "AUTH401_1", value = """
+					{
+					  "isSuccess": false,
+					  "code": "AUTH401_1",
+					  "message": "로그인이 필요합니다",
+					  "result": null
+					}""")))
 	@PatchMapping
 	public CustomResponse<Map<String, Object>> saveTaste(@RequestBody TasteRequest request) {
 		boolean updated = this.friends.saveTaste(this.currentMember.requireId(), request.id(), request.tasteSummary());
