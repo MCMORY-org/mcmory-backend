@@ -45,7 +45,8 @@ public abstract class HttpIntegrationSupport extends MySqlContainerSupport {
 	 *
 	 * 실패 응답은 result가 없으므로 `{error, code}` 형태로 바꿔 준다 — 문구 단언을 봉투 도입 전과 같게 유지한다.
 	 */
-	protected record Response(int status, JsonNode body, JsonNode envelope, List<String> setCookies) {
+	protected record Response(int status, JsonNode body, JsonNode envelope, List<String> setCookies,
+			java.net.http.HttpHeaders headers) {
 
 		public String text() {
 			return this.envelope == null ? "" : this.envelope.toString();
@@ -63,6 +64,14 @@ public abstract class HttpIntegrationSupport extends MySqlContainerSupport {
 
 	protected Response get(String path) {
 		return send(HttpRequest.newBuilder(uri(path)).GET());
+	}
+
+	/** CORS 프리플라이트임. 브라우저가 상태 변경 요청 앞에 보내는 그 요청을 그대로 흉내 냄. */
+	protected Response preflight(String path, String origin) {
+		return send(HttpRequest.newBuilder(uri(path))
+			.header("Origin", origin)
+			.header("Access-Control-Request-Method", "POST")
+			.method("OPTIONS", HttpRequest.BodyPublishers.noBody()));
 	}
 
 	/** Origin 헤더를 실은 POST임. 필터 계층의 응답 계약을 보려면 브라우저처럼 이 헤더를 붙여야 함. */
@@ -142,7 +151,7 @@ public abstract class HttpIntegrationSupport extends MySqlContainerSupport {
 			storeCookies(setCookies);
 
 			JsonNode envelope = response.body().isBlank() ? null : JSON.readTree(response.body());
-			return new Response(response.statusCode(), unwrap(envelope), envelope, setCookies);
+			return new Response(response.statusCode(), unwrap(envelope), envelope, setCookies, response.headers());
 		}
 		catch (Exception ex) {
 			throw new IllegalStateException("요청 실패", ex);

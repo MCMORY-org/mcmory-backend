@@ -32,7 +32,10 @@ app:
     access-ttl: 30m
     refresh-ttl: 1d
     cookie:
-      same-site: Lax
+      # 다른 오리진(프론트 로컬 dev 서버)에서 붙으면 Lax 쿠키는 저장도 전송도 안 된다.
+      # 그 경우에만 COOKIE_SAMESITE=None으로 올리는데, 브라우저가 None에 Secure를 요구하므로
+      # COOKIE_SECURE=true를 반드시 함께 준다. None이 되면 CSRF 방어는 Origin 검사만 남는다
+      same-site: ${COOKIE_SAMESITE:Lax}
       # 웹뷰 로컬 검증은 http://10.0.2.2로 붙고 그 호스트는 secure context가 아니라 쿠키가 통째로 죽는다.
       # 배포 프로파일에서만 true로 올린다
       secure: ${COOKIE_SECURE:false}

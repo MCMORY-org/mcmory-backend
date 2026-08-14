@@ -2,6 +2,7 @@ package com.mcmory.backend.auth;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -32,10 +33,16 @@ public class OriginCheckFilter extends OncePerRequestFilter {
 
 	private static final Set<String> STATE_CHANGING = Set.of("POST", "PUT", "PATCH", "DELETE");
 
+	/** 프론트 로컬 dev 서버(Vite 5173, Next 3000). CorsConfig도 이 목록을 씀 */
+	public static final List<String> LOCAL_DEV_ORIGINS = List.of("http://localhost:5173", "http://127.0.0.1:5173",
+			"http://localhost:3000", "http://127.0.0.1:3000");
+
 	private final List<String> allowedOrigins;
 
 	public OriginCheckFilter(@Value("${app.auth.allowed-origins:}") List<String> allowedOrigins) {
-		this.allowedOrigins = allowedOrigins;
+		List<String> origins = new ArrayList<>(allowedOrigins);
+		origins.addAll(LOCAL_DEV_ORIGINS);
+		this.allowedOrigins = List.copyOf(origins);
 	}
 
 	@Override
