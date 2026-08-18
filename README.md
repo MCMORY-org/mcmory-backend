@@ -6,11 +6,11 @@ MCMORY Back-end 레포지토리입니다. **MCMORY**는 멋쟁이사자처럼 �
 
 REST API 서버이며 응답은 전부 공통 봉투(`CustomResponse`)로 나갑니다.
 
-> **도메인 코드는 이식 중입니다.** 지금 여기 있는 것은 빌드 설정과 CI뿐입니다.
+> **운영 서버: `https://api.cartlab.store`** (`main` push가 곧 배포입니다)
 
 ## 📍 API 엔드포인트
 
-**모든 엔드포인트는 `/api/v1` 접두사를 가집니다.** 전체 경로와 요청·응답 계약과 에러코드는 **서버 기동 후 Swagger UI**와 상위 프로젝트의 **`docs/architecture/API명세서.md`**에서 관리합니다. README에는 목록을 중복하지 않으므로 **API가 바뀌어도 README를 고칠 필요가 없습니다.**
+**모든 엔드포인트는 `/api/v1` 접두사를 가집니다.** 전체 경로와 요청·응답 계약과 에러코드는 **Swagger UI**가 정본입니다(코드에서 자동 생성). README에는 목록을 중복하지 않으므로 **API가 바뀌어도 README를 고칠 필요가 없습니다.** 팀 내부에는 같은 계약을 서술한 `docs/architecture/API명세서.md`가 별도로 있으나 이 저장소 밖입니다.
 
 > Swagger UI: `http://localhost:8080/swagger-ui/index.html` (springdoc이 `/v3/api-docs`를 코드에서 자동 생성)
 
@@ -26,6 +26,11 @@ REST API 서버이며 응답은 전부 공통 봉투(`CustomResponse`)로 나갑
 - **API Docs**: springdoc-openapi 3.0.2 (Swagger UI)
 - **Test**: JUnit 5 + Testcontainers (실제 MySQL)
 - **Quality**: spring-javaformat 0.0.47, Checkstyle 10.17.0, SpotBugs 4.10.2 (Gradle 플러그인 6.5.8), JaCoCo 0.8.14
+- **AI**: AWS Bedrock (Amazon Nova Pro, 추론 프로파일 `apac.amazon.nova-pro-v1:0`, SDK 2.51.4)
+- **Infra**: Docker + Docker Hub, AWS EC2, nginx (443 종단 — 앱은 `127.0.0.1:8080`에만 바인딩)
+- **CI/CD**: GitHub Actions (`main` push에 빌드·이미지 푸시·EC2 배포)
+
+> **AI가 하는 일의 경계.** 추천 결과 자체는 **규칙**이 만듭니다(`POST /api/v1/recommend`). 모델은 두 곳에서만 쓰입니다 — 스타일링 근거 문구(`styling/BedrockStylingReasonWriter`)와, `?aiReason=true`로 요청했을 때 **규칙이 이미 좁혀 놓은 후보 안에서** 하나를 고르는 일(`recommend/BedrockGiftPicker`)입니다. 모델 응답이 후보를 벗어나거나 시간을 넘기면 규칙 결과로 폴백하고 그때도 200입니다. **응답의 `reasonSource`가 `LLM`일 때만 모델이 관여한 결과입니다.** `bedrock.enabled` 기본값은 `false`이고, 꺼져 있으면 빈 자체가 만들어지지 않아 로컬과 테스트는 외부 호출 0건에 결정론적입니다.
 
 > **JaCoCo는 리포트만 냅니다. 커버리지 수치 게이트는 두지 않습니다.** 해커톤 일정에서 숫자를 채우려고 의미 없는 테스트를 쓰게 되기 때문이고, 게이트는 "필수 검증 항목 전부 녹색"입니다.
 
@@ -36,7 +41,7 @@ REST API 서버이며 응답은 전부 공통 봉투(`CustomResponse`)로 나갑
 - 액세스 토큰과 리프레시 토큰을 **모두 HttpOnly 쿠키**로 내려줍니다. 프론트가 토큰을 직접 다루지 않습니다.
 - 액세스 30분, 리프레시 1일이며 리프레시는 회전합니다. 회전에는 **30초 유예창**이 있습니다.
 - **유예 경로는 200이면서 `Set-Cookie`를 보내지 않습니다.** 프론트는 그 부재를 실패로 다루면 안 됩니다.
-- 쿠키 SameSite는 `Lax`, `secure`는 로컬 기본 `false`이고 배포 프로파일에서만 `true`로 올립니다.
+- 쿠키 SameSite와 `secure`는 로컬 기본이 `Lax` / `false`입니다. **배포는 환경변수로 `COOKIE_SAMESITE=None` + `COOKIE_SECURE=true`를 줍니다** — 웹이 다른 오리진에 있어 `Lax`면 브라우저가 `Set-Cookie`를 버려 로그인이 유지되지 않고, `None`은 브라우저가 `Secure`를 함께 요구하기 때문입니다. Spring profile이 아니라 환경변수 오버라이드입니다(`application.yml` 한 벌).
 
 ## 🏃 빠른 시작
 
@@ -60,7 +65,7 @@ docker compose up -d
 #    http://localhost:8080/swagger-ui/index.html
 ```
 
-**이 레포만 clone하면 됩니다.** 별도 파일 없이 뜹니다. 로그인 계정은 `01012345678 / 1234`입니다.
+**이 레포만 clone하면 됩니다.** 별도 파일 없이 뜹니다. 로그인 계정은 `01012345678 / 1234`입니다 — **로컬 시드 전용이고 운영 서버에는 없습니다**(자격증명이 여기 공개돼 있어 배포 시드에서 뺐습니다).
 
 ### 로컬 DB
 
@@ -122,7 +127,7 @@ docker compose down -v && docker compose up -d
 
 > Checkstyle이 **한국어 지역 변수명을 거부합니다**(`^[a-z][a-zA-Z0-9]*$`). 테스트 메소드명은 한국어를 허용합니다.
 
-계약 검증은 스모크입니다. 서버를 띄운 뒤 프로토타입 저장소에서 돌립니다.
+계약 검증은 스모크입니다. 서버를 띄운 뒤 **팀 내부 프로토타입 저장소**(이 저장소 밖)에서 돌립니다.
 
 ```bash
 MCMORY_BASE=http://localhost:8080 MCMORY_ENVELOPE=1 npm run smoke
@@ -132,7 +137,7 @@ MCMORY_BASE=http://localhost:8080 MCMORY_ENVELOPE=1 npm run smoke
 
 > GitHub Actions CI가 `main`과 `dev` push와 PR마다 commitlint, checkFormat, Checkstyle, SpotBugs, test, JaCoCo 리포트, build bootJar 순으로 동일 게이트를 재검증합니다. fail-fast라 앞이 깨지면 뒤를 돌리지 않습니다. `docs/**`와 `**.md` 변경은 CI를 트리거하지 않습니다.
 >
-> 배포 잡은 `DEPLOY_ENABLED` 저장소 변수로 잠겨 있습니다. 배포 정의는 `Dockerfile`과 `deploy/compose.yml`이고, **`deploy/compose.yml`을 로컬에서 실행하지 마세요** — 운영 컨테이너 구성입니다.
+> 배포 잡은 `main` push이면서 저장소 변수 `DEPLOY_ENABLED=true`일 때만 돕니다. **지금 켜져 있어 `main` push는 곧 프로덕션 배포입니다.** 배포 정의는 `Dockerfile`과 `deploy/compose.yml`이고, **`deploy/compose.yml`을 로컬에서 실행하지 마세요** — 운영 컨테이너 구성입니다.
 
 ## 💻 개발 환경 설정 (필수!)
 
@@ -212,6 +217,7 @@ src/
 │   │   ├── recommend/               # 추천 실행과 추천 이력
 │   │   ├── reservation/             # 매장 예약
 │   │   ├── store/                   # 매장 조회
+│   │   ├── styling/                 # 스타일링 근거 문구 (규칙 문구와 Bedrock 폴백)
 │   │   └── taste/                   # 취향 프로필
 │   └── resources/                   # 애플리케이션 설정
 └── test/
@@ -222,7 +228,9 @@ src/
     │   ├── gift/
     │   ├── recommend/
     │   ├── reservation/
-    │   └── support/                 # 테스트 공용 기반 (통합 테스트 지원, MySQL 컨테이너)
+    │   ├── styling/
+    │   ├── support/                 # 테스트 공용 기반 (통합 테스트 지원, MySQL 컨테이너)
+    │   └── taste/
     └── resources/
         └── db/                      # 스키마와 시드 정본. 테스트와 compose 초기화가 함께 봄
 ```
