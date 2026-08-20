@@ -22,6 +22,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -37,6 +38,8 @@ import org.springframework.web.bind.annotation.RestController;
 		description = "FR-017 편지함. 발송분과 수신분을 한 번에 반환함. 명세서 5.4의 #14가 계약 정본임. **화면 미구현**(명세서 5.0) 상태이나 API는 동작함. 페이지네이션이 없어 전체를 한 번에 반환함(명세서 6장)")
 public class LetterboxController {
 
+	private final GiftService giftService;
+
 	private final GiftRepository gifts;
 
 	private final FriendRepository friends;
@@ -45,8 +48,9 @@ public class LetterboxController {
 
 	private final CurrentMember currentMember;
 
-	public LetterboxController(GiftRepository gifts, FriendRepository friends, ProductRepository products,
-			CurrentMember currentMember) {
+	public LetterboxController(GiftService giftService, GiftRepository gifts, FriendRepository friends,
+			ProductRepository products, CurrentMember currentMember) {
+		this.giftService = giftService;
 		this.gifts = gifts;
 		this.friends = friends;
 		this.products = products;
@@ -189,6 +193,57 @@ public class LetterboxController {
 
 		return CustomResponse
 			.ok(Map.of("sent", sent, "unread", unread, "received", received, "receivedUnopened", receivedUnopened));
+	}
+
+	@GetMapping("/{giftId}")
+	@Operation(summary = "받은 편지 열람",
+			description = """
+					**인증된 수신자 본인만** 자기 편지를 엶(FIX-W006). 목록(#14)은 본문도 초대 토큰도 주지 않아 수신자가 자기 편지를 가져올 방법이 없었음 — 그 공백을 메우는 경로임.
+
+					함정 1: **읽기 전용임.** 최초 개봉은 토큰 경로(#13 `POST /api/v1/invitations/{token}`) 전용으로 남김. `recipientMemberId`는 발송 시 전화번호 매칭으로 자동 귀속되므로(ADR-006 결정 5), 회원 개봉 경로를 열면 번호 오타로 오귀속된 회원이 링크를 받은 적도 없이 남의 편지를 개봉하고 발송자에게 열람 알림까지 보내게 됨. 개봉은 되돌릴 수 없음(ADR-011).
+
+					함정 2: **동의 게이트는 회원에게도 걸림**(FR-015). 동의 전에는 `needConsent: true`와 닉네임만 오고 `letterBody` 키 자체가 없음. 회원이라는 사실이 면제 사유가 아님.
+
+					함정 3: 남의 편지 id와 없는 id는 **같은 `GIFT404_1`**임. 존재 여부를 알려주면 id를 훑어 탐색할 수 있음.
+
+					잔여 위험: 진짜 링크 보유자가 개봉한 뒤에는 오귀속 회원이 이 경로로 본문을 읽을 수 있음. 비인증이고 양도 가능하던 토큰 노출보다 훨씬 좁고(특정 회원 1명, 인증됨, 감사 가능) 이번 범위에서 수용한 절충임.""")
+	@ApiResponse(responseCode = "200", description = "조회 성공. 동의 여부에 따라 본문 키가 붙거나 통째로 빠짐",
+			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "동의 후", value = """
+					{
+					  "isSuccess": true,
+					  "code": "200",
+					  "message": "OK",
+					  "result": {
+					    "needConsent": false,
+					    "nickname": "다정한 호저",
+					    "letterBody": "생일 축하해. 늘 고마워",
+					    "letterColor": "GOLD",
+					    "product": { "productId": 1, "name": "숄더백", "price": 890000, "imageUrl": null },
+					    "openedAt": "2026-08-11T13:05:00"
+					  }
+					}""")))
+	@ApiResponse(responseCode = "401", description = "로그인하지 않음",
+			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "AUTH401_1", value = """
+					{
+					  "isSuccess": false,
+					  "code": "AUTH401_1",
+					  "message": "로그인이 필요합니다",
+					  "result": null
+					}""")))
+	@ApiResponse(responseCode = "404", description = "없는 선물이거나 내가 수신자가 아님. **둘을 갈라주지 않음**",
+			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "GIFT404_1", value = """
+					{
+					  "isSuccess": false,
+					  "code": "GIFT404_1",
+					  "message": "초대 정보를 찾을 수 없습니다",
+					  "result": null
+					}""")))
+	public CustomResponse<GiftService.InviteView> readMine(@PathVariable Long giftId) {
+		// 인가는 시큐리티 경로 규칙이 아니라 여기서 검사함 — SecurityConfig가 anyRequest().permitAll()이라
+		// 이 호출을 빠뜨리면 인증 없이 남의 편지가 열림
+		Long memberId = this.currentMember.requireId();
+
+		return CustomResponse.ok(this.giftService.readForRecipient(memberId, giftId));
 	}
 
 	private Product productOf(Gift gift) {
