@@ -85,7 +85,9 @@ class RecipientLetterReadIntegrationTest extends HttpIntegrationSupport {
 		var read = get("/api/v1/letters/" + giftId);
 		assertThat(read.status()).isEqualTo(404);
 		assertThat(read.code()).isEqualTo("GIFT404_1");
-		assertThat(get("/api/v1/letters/99999999").status()).isEqualTo(404);
+		var nonexistent = get("/api/v1/letters/99999999");
+		assertThat(nonexistent.status()).isEqualTo(404);
+		assertThat(nonexistent.code()).isEqualTo("GIFT404_1");
 	}
 
 	@Test
