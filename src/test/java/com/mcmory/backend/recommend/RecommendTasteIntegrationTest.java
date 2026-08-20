@@ -44,10 +44,10 @@ class RecommendTasteIntegrationTest extends HttpIntegrationSupport {
 		assertThat(firstWithout.get("reason").asString()).contains("캐주얼");
 
 		// 상품 id를 못박음. "서로 다르다"로만 두면 다른 블랙 상품으로 바뀌어도 통과해 이 회귀를 놓침
-		assertThat(firstWithout.get("product").get("id").asLong()).as("취향 없는 1순위가 시드 계산과 다름").isEqualTo(6L);
+		assertThat(firstWithout.get("product").get("id").asLong()).as("취향 없는 1순위가 시드 계산과 다름").isEqualTo(19L);
 		assertThat(firstWith.get("product").get("id").asLong())
 			.as("취향이 1순위를 바꾸지 못함. taste_profile을 안 읽는 상태로 되돌아갔는지 볼 것")
-			.isEqualTo(1L);
+			.isEqualTo(39L);
 		assertThat(firstWith.get("product").get("color").asString()).isEqualTo("블랙");
 		assertThat(firstWith.get("reasonType").asString()).isEqualTo("PERSONAL");
 		assertThat(firstWith.get("reason").asString()).contains("블랙");
