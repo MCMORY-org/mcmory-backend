@@ -24,6 +24,12 @@ public interface GiftRepository extends JpaRepository<Gift, Long> {
 
 	List<Gift> findByRecipientMemberIdOrderByIdDesc(Long recipientMemberId);
 
+	/**
+	 * FIX-W006: 인증된 수신자의 편지 열람임. 소유 조건을 쿼리에 담는 이유는 남의 행을 먼저 읽고 자바에서 버리지 않기 위함이고, 인가 조건을
+	 * 빠뜨리기 어렵게 하기 위함임.
+	 */
+	Optional<Gift> findByIdAndRecipientMemberId(Long id, Long recipientMemberId);
+
 	/** ADR-001: 닉네임은 발송 시 고정 발급이고 이미 쓰인 것을 피함. */
 	@Query("SELECT g.anonNickname FROM Gift g")
 	List<String> findAllNicknames();

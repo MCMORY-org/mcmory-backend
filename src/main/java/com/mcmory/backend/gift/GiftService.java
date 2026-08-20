@@ -326,6 +326,29 @@ public class GiftService {
 		Gift gift = this.gifts.findByInviteToken(inviteToken)
 			.orElseThrow(() -> new CustomException(GiftErrorCode.INVITE_NOT_FOUND));
 
+		return toView(gift);
+	}
+
+	/**
+	 * FIX-W006: 인증된 수신자의 편지 열람임(명세서 5.4의 #37). 목록(#14)이 본문도 토큰도 주지 않아 수신자가 자기 편지를 가져올 방법이
+	 * 없던 것을 메움.
+	 *
+	 * **읽기 전용이다** — 최초 개봉은 토큰 경로 전용으로 남김. recipientMemberId는 발송 시 전화번호 매칭으로 자동
+	 * 귀속되므로(ADR-006 결정 5), 회원 개봉 경로를 열면 번호 오타로 오귀속된 회원이 링크를 받은 적도 없이 남의 편지를 개봉하고 발송자에게 열람
+	 * 알림까지 보내게 됨. 개봉은 되돌릴 수 없음(ADR-011 역방향 없음).
+	 *
+	 * 남의 편지와 없는 id는 같은 404임 — 존재 여부를 알려주면 id를 훑어 탐색할 수 있음.
+	 */
+	@Transactional(readOnly = true)
+	public InviteView readForRecipient(Long memberId, Long giftId) {
+		Gift gift = this.gifts.findByIdAndRecipientMemberId(giftId, memberId)
+			.orElseThrow(() -> new CustomException(GiftErrorCode.INVITE_NOT_FOUND));
+
+		return toView(gift);
+	}
+
+	/** 동의 전에는 본문과 상품을 담지 않음(FR-015). 토큰 경로와 회원 경로가 같은 분기를 쓰게 하려고 뽑아냄. */
+	private InviteView toView(Gift gift) {
 		if (!gift.isConsented()) {
 			return new InviteView(true, gift.getAnonNickname(), null, null, null, null, null);
 		}
