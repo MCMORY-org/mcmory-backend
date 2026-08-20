@@ -221,8 +221,8 @@ public class AuthController {
 	 * 액세스 토큰만 재발급하고 Set-Cookie를 보내지 않음. 프론트가 Set-Cookie 부재를 실패로 오해하면 campus 장애가 반복됨.
 	 */
 	@Operation(summary = "토큰 재발급", description = "리프레시 쿠키(`mcmory_rt`)가 필요함.\n\n"
-			+ "함정: **200 응답에 `Set-Cookie`가 항상 있지는 않음**. 같은 쿠키로 재발급이 동시에 두 번 들어오면 회전은 한 번만 일어나고, 진 요청은 30초 유예창 안이면 200을 받되 액세스 토큰만 재발급되고 `Set-Cookie`가 오지 않음 — 이긴 요청이 심은 쿠키를 덮으면 안 되기 때문임. 구분은 `result.rotated`임.\n\n"
-			+ "**`Set-Cookie` 부재를 실패로 다루면 안 됨** — campus에서 이것을 실패로 처리해 운영 401이 211건 발생했음. 프론트는 인증 초기화를 single-flight로 하고, 로그인·콜백 화면에서 초기 재발급을 하지 않으며, **5xx를 401처럼 로그아웃 처리하지 않을 것**.")
+			+ "함정: **200 응답에 `mcmory_rt` `Set-Cookie`가 항상 있지는 않음**(`mcmory_at`은 계속 나감). 같은 쿠키로 재발급이 동시에 두 번 들어오면 회전은 한 번만 일어나고, 진 요청은 30초 유예창 안이면 200을 받되 액세스 토큰만 재발급되고 `Set-Cookie`가 오지 않음 — 이긴 요청이 심은 쿠키를 덮으면 안 되기 때문임. 구분은 `result.rotated`임.\n\n"
+			+ "**`mcmory_rt` `Set-Cookie` 부재를 실패로 다루면 안 됨** — campus에서 이것을 실패로 처리해 운영 401이 211건 발생했음. 프론트는 인증 초기화를 single-flight로 하고, 로그인·콜백 화면에서 초기 재발급을 하지 않으며, **5xx를 401처럼 로그아웃 처리하지 않을 것**.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200",
 					description = "재발급 성공임. `rotated`가 false면 유예 경로이고 `Set-Cookie`에 리프레시 쿠키가 없음",

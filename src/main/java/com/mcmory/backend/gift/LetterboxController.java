@@ -60,7 +60,7 @@ public class LetterboxController {
 			@Schema(description = "선물 id임", example = "12", requiredMode = Schema.RequiredMode.REQUIRED) Long id,
 			@Schema(description = "초대 토큰임. `GET /api/v1/invitations/{token}` 경로에 그대로 실음",
 					example = "k3n8pq2wz7ta5vh0jr4bmx91", requiredMode = Schema.RequiredMode.REQUIRED) String token,
-			@Schema(description = "받는 친구 이름임. **삭제된 친구는 `\"삭제된 친구\"`로 나감**(ADR-003 개인정보 즉시 파기 — 이름과 번호가 DB에서 NULL이 됨). "
+			@Schema(description = "받는 친구 이름임. **삭제된 친구는 `\"삭제된 친구\"`로 나감**(삭제 시 이름과 번호를 DB에서 즉시 파기함). "
 					+ "선택 — 친구 행 자체를 찾지 못하면 `null`임", example = "김민지",
 					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String friendName,
 			@Schema(description = "수신자에게 보이는 발신자 익명 닉네임임(형용사 더하기 호저). 발송자 실명은 어디에도 싣지 않음", example = "다정한 호저",

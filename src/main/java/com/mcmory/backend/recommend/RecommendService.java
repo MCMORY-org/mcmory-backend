@@ -145,7 +145,7 @@ public class RecommendService {
 					example = "3", requiredMode = Schema.RequiredMode.REQUIRED) Long recommendationId,
 			@Schema(description = "**무엇이 3건을 골랐는지임.** `LLM`이면 후보 안에서 모델이 고르고 첫 문구까지 썼다는 뜻이고, `RULE`이면 규칙 결과임. "
 					+ "**후보 자체는 어느 쪽이든 항상 규칙이 만듦** — 모델은 그 밖으로 나갈 수 없음. "
-					+ "스타일링(`GET /api/v1/owned/{id}/care-guide`)의 같은 이름 필드는 문구 작성 주체만 뜻하므로 의미가 다름. "
+					+ "스타일링(`GET /api/v1/owned/{id}/styling`)의 같은 이름 필드는 문구 작성 주체만 뜻하므로 의미가 다름. "
 					+ "**스냅샷 재조회(`GET /api/v1/recommend/{id}`)에는 저장되지 않음** — 생성 응답 전용임", example = "RULE",
 					allowableValues = {
 							"LLM", "RULE" },

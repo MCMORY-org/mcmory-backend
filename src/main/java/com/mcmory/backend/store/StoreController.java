@@ -107,7 +107,7 @@ public class StoreController {
 
 					**함정 6**: `distanceKm`은 실제 거리 계산이 아니라 프로토타입 고정값임.
 
-					실패 코드는 없음 — 이 경로는 파라미터가 틀려도 에러 대신 빈 결과를 반환함.""")
+					`storeId`가 없거나 없는 매장이면 에러 대신 `slots`가 `null`임. 다만 `date`가 `yyyy-MM-dd`가 아니면 파싱에 실패해 `COMMON400`이 나가므로 형식을 맞춰 보낼 것.""")
 	@ApiResponse(responseCode = "200",
 			description = "성공. 봉투 `code`는 문자열 `\"200\"`임. `slots`는 `storeId`와 `date`를 함께 준 경우에만 채워지고 그 외에는 `null`임",
 			content = @Content(mediaType = "application/json", examples = {
