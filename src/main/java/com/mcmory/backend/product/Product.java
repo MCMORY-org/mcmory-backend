@@ -71,9 +71,11 @@ public class Product {
 
 	/**
 	 * 선물 추천과 발송의 적격 판정임. **두 경로가 이 하나를 함께 봄** — 추천만 막으면 productId를 직접 실은 발송으로 뚫림.
+	 *
+	 * 사진이 없는 상품은 제외함. 화면이 빈 자리를 그리게 되는데, 선물을 고르는 화면에서 그것은 상품이 없는 것처럼 보임.
 	 */
 	public boolean isGiftEligible() {
-		return GIFT_CATEGORIES.contains(this.category);
+		return GIFT_CATEGORIES.contains(this.category) && this.imageUrl != null;
 	}
 
 	public String getCategory() {

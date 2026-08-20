@@ -59,7 +59,7 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 		var first = recommended.body().get("results").get(0);
 		// 상품 id를 못박음. "달라졌다"로만 두면 다른 블랙 상품으로 바뀌어도 통과해 회귀를 놓침
 		assertThat(first.get("product").get("id").asLong()).as("설문 답변이 추천에 반영되지 않음: " + recommended.text())
-			.isEqualTo(1L);
+			.isEqualTo(39L);
 		assertThat(first.get("reasonType").asString()).isEqualTo("PERSONAL");
 		assertThat(first.get("reason").asString()).contains("블랙");
 	}
@@ -94,10 +94,10 @@ class SurveySubmitIntegrationTest extends HttpIntegrationSupport {
 		var recommended = post("/api/v1/recommend",
 				"{\"relation\":\"친구\",\"friendId\":" + friendId + "," + DEFAULT_BUDGET + "}");
 
-		// 나중 답변이 이겨야 함. 상품 8이 유일한 핑크임
+		// 나중 답변이 이겨야 함. 81은 예산 안에서 점수가 가장 높은 핑크임
 		assertThat(recommended.body().get("results").get(0).get("product").get("id").asLong())
 			.as("재제출이 반영되지 않음: " + recommended.text())
-			.isEqualTo(8L);
+			.isEqualTo(81L);
 	}
 
 	@Test
