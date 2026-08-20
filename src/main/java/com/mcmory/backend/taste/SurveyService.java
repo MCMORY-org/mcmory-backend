@@ -55,14 +55,13 @@ public class SurveyService {
 
 	/** `Start-01` 표시용임. 동의 전 화면이라 누가 누구에게 물었는지만 줌. */
 	public record SurveyView(
-			@Schema(description = "발송자 익명 표시명임. 발송자 실명이 아님(ADR-001 익명 원칙). "
-					+ "지금은 더미 `멋쟁이사자` 고정이고 표시명 규칙은 미결임 — 화면은 이 값을 그대로 그리면 됨", example = "멋쟁이사자",
-					requiredMode = Schema.RequiredMode.REQUIRED) String senderName,
+			@Schema(description = "발송자 익명 표시명임. 발송자 실명이 아님. " + "지금은 더미 `멋쟁이사자` 고정이고 표시명 규칙은 미결임 — 화면은 이 값을 그대로 그리면 됨",
+					example = "멋쟁이사자", requiredMode = Schema.RequiredMode.REQUIRED) String senderName,
 			@Schema(description = "설문 대상 수신자 이름임. 발송자가 친구로 등록할 때 넣은 값이고 1자 이상 20자 이하임", example = "김민지",
 					requiredMode = Schema.RequiredMode.REQUIRED) String friendName,
-			@Schema(description = "이미 답한 설문인지임. `true`여도 재제출은 덮어쓰기라 차단하지 않음" + "(ADR-009 결정 1의 친구당 1행). 화면 안내 문구 분기용임",
-					example = "false", requiredMode = Schema.RequiredMode.REQUIRED) boolean answered,
-			@Schema(description = "발송자가 `HOME-02`에서 켠 축임(FEAT-W003). 값은 `colors`·`styles`·`bags` 중 하나 이상이고 순서는 화면 카드 순서임. "
+			@Schema(description = "이미 답한 설문인지임. `true`여도 재제출은 덮어쓰기라 차단하지 않음" + ". 화면 안내 문구 분기용임", example = "false",
+					requiredMode = Schema.RequiredMode.REQUIRED) boolean answered,
+			@Schema(description = "발송자가 `HOME-02`에서 켠 축임. 값은 `colors`·`styles`·`bags` 중 하나 이상이고 순서는 화면 카드 순서임. "
 					+ "**여기 없는 축은 그리지 말 것** — 답을 담아 보내면 제출이 `FRIEND400_4`로 막힘. 토글을 저장한 적이 없는 친구는 세 축 전부가 옴",
 					example = "[\"colors\",\"styles\"]",
 					requiredMode = Schema.RequiredMode.REQUIRED) List<String> axes) {

@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 동의 현황과 재동의임. 이 두 경로가 버전 관리의 쓸모 그 자체다 — 버전을 올려두기만 하고 다시 묻는 경로가 없으면 버전 컬럼은 장식이 된다.
  */
 @Tag(name = "동의",
-		description = "항목별 동의 현황 조회와 재동의임(명세서 5.2, #6·#7). 절 전체가 `화면 미구현`이고 계약만 유지함 — 가입 1회 동의로 시연 경로가 완결되며 재동의 트리거인 약관 버전 변경이 시연에 없음. 가입의 `privacyAgreed`(#1)는 별개이며 필수임. 두 경로 모두 인증 필수이고, 미인증이면 `AUTH401_1`을 반환함. 프론트는 문구가 아니라 `code`로 분기할 것.")
+		description = "항목별 동의 현황 조회와 재동의를 다룸. 모든 엔드포인트는 인증 필수이며 미인증이면 `AUTH401_1`을 반환함. 회원가입의 `privacyAgreed`는 이 동의 API와 별개의 필수 항목임. 실패는 `message`가 아니라 응답의 `code`로 분기할 것.")
 @SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/consents")
@@ -52,7 +52,7 @@ public class ConsentController {
 
 	/** needsAction이 하나라도 참이면 화면이 동의 시트를 다시 띄운다. */
 	@Operation(summary = "동의 현황 조회",
-			description = "항목별 동의 현황과 버전을 반환함(명세서 #6). **인증 필수** — 세션이 없으면 `AUTH401_1`임. 최상위 `needsAction`은 항목별 `needsAction`의 OR이고, 참이면 화면이 동의 시트를 다시 띄움. 항목이 참이 되는 경우는 둘 — 필수인데 동의가 없거나, 동의는 했지만 그때의 `agreedVersion`이 지금 `currentVersion`과 다름(약관 문안이 바뀌었다는 뜻)임. 함정: 버전을 올려두기만 하고 이 경로로 다시 묻지 않으면 버전 컬럼이 장식이 됨.")
+			description = "항목별 동의 현황과 버전을 반환함. **인증 필수** — 세션이 없으면 `AUTH401_1`임. 최상위 `needsAction`은 항목별 `needsAction`의 OR이고, 참이면 화면이 동의 시트를 다시 띄움. 항목이 참이 되는 경우는 둘 — 필수인데 동의가 없거나, 동의는 했지만 그때의 `agreedVersion`이 지금 `currentVersion`과 다름(약관 문안이 바뀌었다는 뜻)임. 함정: 버전을 올려두기만 하고 이 경로로 다시 묻지 않으면 버전 컬럼이 장식이 됨.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200",
 					description = "동의 현황임. `result.items`가 항목 배열이고 `result.needsAction`이 재동의 필요 여부임",
@@ -90,7 +90,7 @@ public class ConsentController {
 
 	/** 재동의와 선택 항목 변경임. 기존 행을 고치지 않고 새 행을 남긴다(append-only). */
 	@Operation(summary = "재동의와 선택 항목 변경",
-			description = "동의 항목 하나의 동의 또는 철회를 기록함(명세서 #7). 요청은 `{ \"type\": \"SMS\", \"agreed\": true }`임. **인증 필수** — 세션이 없으면 `AUTH401_1`임. 기존 행을 고치지 않고 새 행을 남기는 append-only라 이력이 그대로 남음. 함정: `agreed`를 생략하면 `VALID400_2`로 거부함 — 누락을 false로 접으면 필드를 빠뜨린 요청이 조용히 철회로 처리되는데 동의와 철회는 감사 대상이라 명시를 요구함. 필수 항목은 철회할 수 없어 `CONSENT400_3`임.")
+			description = "동의 항목 하나의 동의 또는 철회를 기록함. 요청은 `{ \"type\": \"SMS\", \"agreed\": true }`임. **인증 필수** — 세션이 없으면 `AUTH401_1`임. 기존 행을 고치지 않고 새 행을 남기는 append-only라 이력이 그대로 남음. 함정: `agreed`를 생략하면 `VALID400_2`로 거부함 — 누락을 false로 접으면 필드를 빠뜨린 요청이 조용히 철회로 처리되는데 동의와 철회는 감사 대상이라 명시를 요구함. 필수 항목은 철회할 수 없어 `CONSENT400_3`임.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "기록 성공임",
 					content = @Content(mediaType = "application/json",
