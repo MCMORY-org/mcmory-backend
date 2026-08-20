@@ -75,10 +75,9 @@ public class GiftService {
 	}
 
 	public record Sent(
-			@Schema(description = "초대 토큰임. 이 값으로 `/g/{token}` 초대 URL을 만들어 수신자에게 전달함(FR-014)",
+			@Schema(description = "초대 토큰임. 이 값으로 `/g/{token}` 초대 URL을 만들어 수신자에게 전달함",
 					example = "k3n8pq2wz7ta5vh0jr4bmx91") String token,
-			@Schema(description = "수신자에게 보일 발송자의 익명 닉네임임(ADR-001). 발송자 실명은 주지 않음",
-					example = "다정한 호저") String nickname) {
+			@Schema(description = "수신자에게 보일 발송자의 익명 닉네임임. 발송자 실명은 주지 않음", example = "다정한 호저") String nickname) {
 	}
 
 	/**
@@ -90,11 +89,11 @@ public class GiftService {
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public record InviteView(
 			@Schema(description = "동의가 아직 필요한지임. `true`면 닉네임만 오고 아래 본문·상품 키가 통째로 없음. "
-					+ "`false`로 바꾸려면 #13 `POST /api/v1/invitations/{token}` 동의를 먼저 거쳐야 함(FR-015)",
+					+ "`false`로 바꾸려면 `POST /api/v1/invitations/{token}` 동의를 먼저 거쳐야 함",
 					example = "true") boolean needConsent,
-			@Schema(description = "발송자의 익명 닉네임임(ADR-001). 동의 전후 모두 옴", example = "다정한 호저") String nickname,
-			@Schema(description = "편지 본문임. **동의 전에는 키 자체가 없음**(FR-015). 1자 이상 200자 이하로 저장된 값임",
-					example = "생일 축하해. 늘 고마워", nullable = true) String letterBody,
+			@Schema(description = "발송자의 익명 닉네임임. 동의 전후 모두 옴", example = "다정한 호저") String nickname,
+			@Schema(description = "편지 본문임. **동의 전에는 키 자체가 없음**. 1자 이상 200자 이하로 저장된 값임", example = "생일 축하해. 늘 고마워",
+					nullable = true) String letterBody,
 			@Schema(description = "편지에 붙은 사진 URL 목록임. 사진을 넣어 보냈을 때만 붙고 **없으면 키 자체가 없음**. "
 					+ "최대 5개이고 전부 `/letter-images/`로 시작함",
 					example = "[\"/letter-images/8f0c1d2e111122223333444455556666.jpg\"]",
@@ -106,7 +105,7 @@ public class GiftService {
 					nullable = true) String letterColor,
 			@Schema(description = "선물로 보낸 상품임. **동의 전에는 키 자체가 없고**, 연결된 상품이 없으면 동의 후에도 없음",
 					nullable = true) ProductView product,
-			@Schema(description = "최초 열람 시각임. 동의와 열람(#13) 전에는 키 자체가 없고 **재방문해도 갈아치우지 않음**(FR-016)",
+			@Schema(description = "최초 열람 시각임. 동의와 열람(`POST /api/v1/invitations/{token}`) 전에는 키 자체가 없고 **재방문해도 갈아치우지 않음**",
 					example = "2026-08-11T13:05:00", nullable = true) LocalDateTime openedAt){
 	}
 
@@ -185,7 +184,7 @@ public class GiftService {
 					+ "소문자로 보내도 대문자로 돌아옴. 발송자에게는 알림 `type`이 `CHANGE_REQ_SIZE` 형태로 감", example = "SIZE",
 					allowableValues = {
 							"SIZE", "COLOR", "ALREADY_OWNED", "ETC" }) String reason,
-			@Schema(description = "수신자에게 함께 주는 공식몰 링크임(ADR-007 경로 2). " + "연결된 상품이 없거나 상품에 링크가 없으면 값이 없음",
+			@Schema(description = "수신자에게 함께 주는 공식몰 링크임. " + "연결된 상품이 없거나 상품에 링크가 없으면 값이 없음",
 					nullable = true) String officialUrl){
 	}
 

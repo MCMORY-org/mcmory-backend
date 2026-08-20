@@ -39,14 +39,14 @@ public class FriendService {
 	}
 
 	/** 목록에는 취향 요약만 붙임. 원본 답변은 taste_profile에 있음(ADR-009 이원화). */
-	@Schema(name = "FriendView", description = "친구 목록 항목임(명세서 5.5 #15)")
+	@Schema(name = "FriendView", description = "친구 목록 항목임")
 	public record FriendView(
 			@Schema(description = "친구 id. 취향 저장·삭제·수정·설문 링크 발급 요청에 그대로 씀", example = "1",
 					requiredMode = Schema.RequiredMode.REQUIRED) Long id,
 			@Schema(description = "친구 이름. 1자 이상 20자 이하임. **삭제된 친구는 목록에 나오지 않음** — "
-					+ "ADR-003에 따라 삭제 시 이름과 전화번호를 DB에서 즉시 NULL로 파기함", example = "김민지",
+					+ "삭제 시 이름과 전화번호를 DB에서 즉시 NULL로 파기함", example = "김민지",
 					requiredMode = Schema.RequiredMode.REQUIRED) String name,
-			@Schema(description = "친구 전화번호. 숫자만 저장하므로 하이픈 없이 나감(`010` 시작 10에서 11자리, ADR-008). "
+			@Schema(description = "친구 전화번호. 숫자만 저장하므로 하이픈 없이 나감(`010` 시작 10에서 11자리). "
 					+ "선물 발송 경로가 이름으로 만든 친구 행은 번호를 나중에 채우므로 null일 수 있음", example = "01012345678",
 					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String phone,
 			@Schema(description = "취향 요약 한 줄임. 취향이 아직 없으면 null임 — 발송자의 취향 저장이나 수신자 설문 제출로 채워짐. "

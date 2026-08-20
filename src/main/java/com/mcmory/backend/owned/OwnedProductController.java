@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "보유 제품",
-		description = "로그인 사용자의 보유 제품 목록과 데모 시리얼 등록, 삭제, 카테고리별 관리 방법임(API명세서 5.6). 모든 엔드포인트가 인증 필수이며 비로그인은 `AUTH401_1`임. 응답은 표준 봉투 `{isSuccess, code, message, result}`이고 성공 `code`는 문자열 \"200\"임.")
+		description = "로그인한 사용자의 보유 제품 목록 조회, 데모 시리얼 등록, 삭제, 카테고리별 관리 방법 조회를 다룸. 모든 엔드포인트는 인증 필수이며 미인증이면 `AUTH401_1`을 반환함. 응답은 표준 봉투 `{isSuccess, code, message, result}` 형식이고 성공 `code`는 문자열 `\"200\"`임.")
 @SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/owned")
@@ -58,14 +58,14 @@ public class OwnedProductController {
 
 	@Schema(name = "OwnedRegisterRequest", description = "데모 시리얼로 보유 제품을 등록하는 요청임(20번).")
 	public record RegisterRequest(@Schema(
-			description = "시드 카탈로그의 데모 일련번호임. **대소문자 무시 완전 일치만 등록됨** — 부분 일치는 지원하지 않음. 서버가 trim 후 대문자로 정규화해 저장함. 시연용 더미 데이터 조회이며 정품 인증이 아님(ADR-004, NFR-004). 빈 값이나 공백만이면 `OWNED400_1`, 일치하는 시드 제품이 없으면 `OWNED404_1`, 같은 상품을 `EXTERNAL` 출처로 이미 등록했으면 `OWNED409_1`임",
+			description = "시드 카탈로그의 데모 일련번호임. **대소문자 무시 완전 일치만 등록됨** — 부분 일치는 지원하지 않음. 서버가 trim 후 대문자로 정규화해 저장함. 시연용 더미 데이터 조회이며 정품 인증이 아님. 빈 값이나 공백만이면 `OWNED400_1`, 일치하는 시드 제품이 없으면 `OWNED404_1`, 같은 상품을 `EXTERNAL` 출처로 이미 등록했으면 `OWNED409_1`임",
 			example = "MX2024A031", requiredMode = Schema.RequiredMode.REQUIRED) String serial) {
 	}
 
 	@Schema(name = "OwnedIdRequest",
 			description = "보유 제품 삭제 요청임(21번). **경로가 아니라 요청 본문으로 id를 받음** — DELETE에 본문이 필요하므로 클라이언트 설정에 주의할 것.")
 	public record IdRequest(@Schema(
-			description = "삭제할 보유 제품 id임(19번 목록의 `id`). 누락, 없는 id, 남의 제품, 이미 삭제된 제품은 존재 여부를 노출하지 않도록 모두 `OWNED404_2`로 동일하게 응답함",
+			description = "삭제할 보유 제품 id임(보유 제품 목록의 `id`). 누락, 없는 id, 남의 제품, 이미 삭제된 제품은 존재 여부를 노출하지 않도록 모두 `OWNED404_2`로 동일하게 응답함",
 			example = "1", requiredMode = Schema.RequiredMode.REQUIRED) Long id) {
 	}
 
@@ -83,13 +83,13 @@ public class OwnedProductController {
 
 	@Schema(name = "OwnedView", description = "보유 제품 목록의 한 행임(19번).")
 	public record OwnedView(
-			@Schema(description = "보유 제품 id임. 21번 삭제와 32번 관리 방법 조회에 그대로 씀", example = "1",
+			@Schema(description = "보유 제품 id임. 삭제와 관리 방법 조회에 그대로 씀", example = "1",
 					requiredMode = Schema.RequiredMode.REQUIRED) Long id,
 			@Schema(description = "등록 출처임. `GIFT`(우리 서비스로 받은 선물)와 `EXTERNAL`(사용자가 데모 시리얼로 직접 등록) **2종**임",
 					example = "EXTERNAL", allowableValues = {
 							"GIFT", "EXTERNAL" },
 					requiredMode = Schema.RequiredMode.REQUIRED) String source,
-			@Schema(description = "등록에 쓴 일련번호 메모임. **검증값이 아니라 메모임**(ADR-004) — 정품 여부를 뜻하지 않음. `GIFT` 출처는 시리얼이 없어 `null`임",
+			@Schema(description = "등록에 쓴 일련번호 메모임. **검증값이 아니라 메모임** — 정품 여부를 뜻하지 않음. `GIFT` 출처는 시리얼이 없어 `null`임",
 					example = "MX2024A031", nullable = true,
 					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String serialMemo,
 			@Schema(description = "등록 일자임. **시각이 아니라 날짜(`yyyy-MM-dd`)임**", example = "2026-08-11", type = "string",
@@ -151,7 +151,7 @@ public class OwnedProductController {
 	 * 실패 문구에 인증이나 정품 표현을 쓰지 않음(ADR-004, NFR-004) — 조회 출처가 없어 정품 여부를 말할 근거가 없음.
 	 */
 	@Operation(summary = "데모 시리얼로 보유 제품 등록 (#20)",
-			description = "인증 필수임. 시드 카탈로그의 데모 일련번호와 **대소문자 무시 완전 일치**만 등록됨 — 부분 일치를 허용하면 없는 번호가 통과하므로 지원하지 않음. 입력은 trim 후 대문자로 정규화해 저장함. **시연용 더미 데이터 조회이며 정품 인증이 아님**(ADR-004, NFR-004) — 화면에 인증이나 정품 표현을 쓰지 말 것. 같은 상품을 `EXTERNAL` 출처로 이미 등록했으면 `OWNED409_1`임.")
+			description = "인증 필수임. 시드 카탈로그의 데모 일련번호와 **대소문자 무시 완전 일치**만 등록됨 — 부분 일치를 허용하면 없는 번호가 통과하므로 지원하지 않음. 입력은 trim 후 대문자로 정규화해 저장함. **시연용 더미 데이터 조회이며 정품 인증이 아님** — 화면에 인증이나 정품 표현을 쓰지 말 것. 같은 상품을 `EXTERNAL` 출처로 이미 등록했으면 `OWNED409_1`임.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "등록 성공",
 					content = @Content(mediaType = "application/json",
@@ -224,7 +224,7 @@ public class OwnedProductController {
 			"심한 오염이나 손상은 매장에 문의해주세요");
 
 	@Schema(name = "OwnedCareGuide",
-			description = "카테고리별 관리 방법 응답임(32번). **시연용 일반 안내이지 MCM 공식 관리 지침이 아님**(NFR-004) — 화면에도 그렇게 표기할 것.")
+			description = "카테고리별 관리 방법 응답임. **시연용 일반 안내이지 MCM 공식 관리 지침이 아님** — 화면에도 그렇게 표기할 것.")
 	public record CareGuide(
 			@Schema(description = "조회한 보유 제품 id임(경로 변수 `id`와 같음)", example = "1",
 					requiredMode = Schema.RequiredMode.REQUIRED) Long ownedProductId,
@@ -237,8 +237,8 @@ public class OwnedProductController {
 					requiredMode = Schema.RequiredMode.REQUIRED) List<String> items) {
 	}
 
-	@Operation(summary = "카테고리별 관리 방법 (#32)",
-			description = "인증 필수임. 보유 제품의 상품 카테고리로 관리 안내 문구를 반환함. 카테고리는 시드 기준 `가방`·`지갑`·`가죽 소품` 셋이고 그 밖은 오류 대신 공통 기본 안내를 줌. **시연용 일반 안내이지 MCM 공식 관리 지침이 아님**(NFR-004) — 화면에도 그렇게 표기할 것. 없거나 남의 제품, 삭제된 제품, 상품 연결이 끊긴 제품은 모두 `OWNED404_2`임. 화면 미구현 상태의 엔드포인트임(명세서 5.0).")
+	@Operation(summary = "카테고리별 관리 방법 (`GET /api/v1/owned/{id}/care-guide`)",
+			description = "인증 필수임. 보유 제품의 상품 카테고리로 관리 안내 문구를 반환함. 카테고리는 시드 기준 `가방`·`지갑`·`가죽 소품` 셋이고 그 밖은 오류 대신 공통 기본 안내를 줌. **시연용 일반 안내이지 MCM 공식 관리 지침이 아님** — 화면에도 그렇게 표기할 것. 없거나 남의 제품, 삭제된 제품, 상품 연결이 끊긴 제품은 모두 `OWNED404_2`임. 화면 미구현 상태의 엔드포인트임.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "관리 방법 반환",
 					content = @Content(mediaType = "application/json",
@@ -290,7 +290,7 @@ public class OwnedProductController {
 				CARE_GUIDE.getOrDefault(category, CARE_GUIDE_DEFAULT)));
 	}
 
-	@Operation(summary = "AI 스타일링 (FR-023)",
+	@Operation(summary = "AI 스타일링 ",
 			description = """
 					인증 필수임. 보유 제품 하나에 어울리는 상품 3건과 근거 문구를 줌(화면 `CONTINUE-02`).
 
@@ -300,9 +300,9 @@ public class OwnedProductController {
 
 					함정 2-1: **기본 호출은 모델을 아예 부르지 않아 언제나 `RULE`임.** AI 문구가 필요하면 `?aiReason=true`를 붙일 것 — 실측으로 54ms와 739ms 차이라 화면이 문구를 안 쓰면 순수 낭비임. **옵트인해도 폴백되면 정상 200**이고 실패가 아님.
 
-					함정 3: 첫 항목만 `PERSONAL`이고 나머지는 고정 `GENERAL` 문구임(ADR-009). 모델 호출도 그래서 요청당 1회임.
+					함정 3: 첫 항목만 `PERSONAL`이고 나머지는 고정 `GENERAL` 문구임. 모델 호출도 그래서 요청당 1회임.
 
-					함정 4: 없는 id, 남의 제품, 삭제된 제품, **상품 연결이 끊긴 제품**을 모두 `OWNED404_2`로 응답함 — 관리 방법(#32)과 같은 계약임.""")
+					함정 4: 없는 id, 남의 제품, 삭제된 제품, **상품 연결이 끊긴 제품**을 모두 `OWNED404_2`로 응답함 — 관리 방법(`GET /api/v1/owned/{id}/care-guide`)과 같은 계약임.""")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "추천 반환",
 					content = @Content(mediaType = "application/json",
@@ -374,7 +374,7 @@ public class OwnedProductController {
 	}
 
 	@Operation(summary = "보유 제품 삭제 (#21)",
-			description = "인증 필수임. 본인 소유의 삭제되지 않은 제품만 소프트 삭제함(`deletedAt` 표시이며 행을 지우지 않음). **id를 경로가 아니라 요청 본문으로 받음** — DELETE에 본문이 필요하므로 클라이언트 설정에 주의할 것. `id` 누락, 없는 id, 남의 제품, 이미 삭제된 제품은 모두 `OWNED404_2`로 동일하게 응답함(존재 여부 노출 방지). 화면 미구현 상태의 엔드포인트임(명세서 5.0).")
+			description = "인증 필수임. 본인 소유의 삭제되지 않은 제품만 소프트 삭제함(`deletedAt` 표시이며 행을 지우지 않음). **id를 경로가 아니라 요청 본문으로 받음** — DELETE에 본문이 필요하므로 클라이언트 설정에 주의할 것. `id` 누락, 없는 id, 남의 제품, 이미 삭제된 제품은 모두 `OWNED404_2`로 동일하게 응답함(존재 여부 노출 방지). 화면 미구현 상태의 엔드포인트임.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "삭제 성공",
 					content = @Content(mediaType = "application/json",

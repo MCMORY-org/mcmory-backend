@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "선물과 초대",
-		description = "선물 발송(FR-013)과 비회원 초대 열람·동의(FR-015), 편지 사진 업로드(FR-012), 내 제품 등록(FR-020), 옵션 변경 문의(FR-018)를 다룸. **`/api/v1/invitations/{token}` 계열은 로그인 없이 진입하는 유일한 경로임**(ADR-006, ADR-013 결정 4) — 단 `POST /api/v1/invitations/{token}/owned`만 예외로 로그인이 필요함. 실패는 문구가 아니라 `code`로 분기할 것.")
+		description = "선물 발송, 비회원 초대 열람·동의, 편지 사진 업로드, 내 제품 등록, 옵션 변경 문의를 다룸. `/api/v1/invitations/{token}` 계열은 로그인 없이 호출할 수 있음. 단, `POST /api/v1/invitations/{token}/owned`는 인증 필수임. 실패는 `message`가 아니라 응답의 `code`로 분기할 것.")
 @RestController
 public class GiftController {
 
@@ -55,12 +55,12 @@ public class GiftController {
 			@Schema(description = "편지 본문임. 앞뒤 공백을 제거한 뒤 1자 이상 200자 이하임(화면 표기 `78/200자`와 같은 한도임). 벗어나면 `GIFT400_2`임",
 					example = "생일 축하해. 늘 고마워", minLength = 1, maxLength = 200,
 					requiredMode = Schema.RequiredMode.REQUIRED) String letterBody,
-			@Schema(description = "**수신자 식별의 정본임.** 오면 `friendName`을 무시하고 이 친구에게 보냄. 선택인 이유는 친구 등록 화면을 거치지 않는 발송 경로가 실재해 id를 가질 수 없기 때문임. **화면이 친구를 고를 수 있으면 반드시 이 값을 보낼 것** — 이름으로 찾으면 한 글자만 틀려도 번호 없는 친구 행이 새로 생겨 도착 알림(FR-017)이 조용히 끊김. 없는 id와 남의 친구는 함께 `FRIEND404_1`임(존재 여부를 갈라주지 않음)",
+			@Schema(description = "**수신자 식별의 정본임.** 오면 `friendName`을 무시하고 이 친구에게 보냄. 선택인 이유는 친구 등록 화면을 거치지 않는 발송 경로가 실재해 id를 가질 수 없기 때문임. **화면이 친구를 고를 수 있으면 반드시 이 값을 보낼 것** — 이름으로 찾으면 한 글자만 틀려도 번호 없는 친구 행이 새로 생겨 도착 알림이 조용히 끊김. 없는 id와 남의 친구는 함께 `FRIEND404_1`임(존재 여부를 갈라주지 않음)",
 					example = "101", nullable = true, requiredMode = Schema.RequiredMode.NOT_REQUIRED) Long friendId,
 			@Schema(description = "`friendId`가 없을 때만 쓰는 폴백 이름임. 앞뒤 공백 제거 후 20자 이하이고 21자 이상은 `FRIEND400_1`임. **비우면 `친구`로 저장됨**. `friendId`가 오면 이 값은 무시됨",
 					example = "지민", maxLength = 20, nullable = true,
 					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String friendName,
-			@Schema(description = "편지에 붙일 사진 URL 목록임. 선택이고, **#28 `POST /api/v1/gift/letter-images`가 발급한 `/letter-images/`로 시작하는 URL만** 받음 — 외부 URL은 `GIFT400_7`임. 최대 5개이고 초과는 `GIFT400_6`임",
+			@Schema(description = "편지에 붙일 사진 URL 목록임. 선택이고, **`POST /api/v1/gift/letter-images`가 발급한 `/letter-images/`로 시작하는 URL만** 받음 — 외부 URL은 `GIFT400_7`임. 최대 5개이고 초과는 `GIFT400_6`임",
 					example = "[\"/letter-images/8f0c1d2e111122223333444455556666.jpg\"]", nullable = true,
 					requiredMode = Schema.RequiredMode.NOT_REQUIRED) List<String> letterImageUrls,
 			@Schema(description = "편지지 **배경색 토큰**임(글자색이 아니고 자유 hex도 아님 — 대비는 화면이 배경 명도로 판단함). 선택이고 고르지 않으면 저장하지 않음. 소문자로 보내도 대문자로 저장하며 넷 밖은 `GIFT400_8`임. **취향 색상 6종·상품 색상과는 다른 축이라 섞지 말 것**",
@@ -70,7 +70,7 @@ public class GiftController {
 	}
 
 	public record ChangeRequest(@Schema(
-			description = "옵션 변경 문의 사유임(ADR-007 결정 2의 고정 4종). `SIZE` 크기, `COLOR` 색상, `ALREADY_OWNED` 이미 보유, `ETC` 기타임. 넷 밖은 `GIFT400_4`임. 발송자에게는 알림 `type`이 `CHANGE_REQ_SIZE` 형태로 전달됨",
+			description = "옵션 변경 문의 사유임. `SIZE` 크기, `COLOR` 색상, `ALREADY_OWNED` 이미 보유, `ETC` 기타임. 넷 밖은 `GIFT400_4`임. 발송자에게는 알림 `type`이 `CHANGE_REQ_SIZE` 형태로 전달됨",
 			example = "SIZE", allowableValues = {
 					"SIZE", "COLOR", "ALREADY_OWNED", "ETC" },
 			requiredMode = Schema.RequiredMode.REQUIRED) String reason){
@@ -79,11 +79,11 @@ public class GiftController {
 	/** FR-013 선물 발송임. */
 	@Operation(summary = "선물 발송",
 			description = """
-					명세서 5.4 #11임. **로그인 필수임.**
+					**로그인 필수임.**
 
-					`letterBody`는 앞뒤 공백 제거 후 1자에서 200자임. `letterImageUrls`는 #28이 발급한 `/letter-images/`로 시작하는 URL만 받고 최대 5개임 — 외부 URL은 `GIFT400_7`임. `letterColor`는 `GOLD`·`BLACK`·`BEIGE`·`PINK` 넷뿐인 배경색 토큰이고 자유 hex가 아님(그 밖은 `GIFT400_8`).
+					`letterBody`는 앞뒤 공백 제거 후 1자에서 200자임. `letterImageUrls`는 `POST /api/v1/gift/letter-images`이 발급한 `/letter-images/`로 시작하는 URL만 받고 최대 5개임 — 외부 URL은 `GIFT400_7`임. `letterColor`는 `GOLD`·`BLACK`·`BEIGE`·`PINK` 넷뿐인 배경색 토큰이고 자유 hex가 아님(그 밖은 `GIFT400_8`).
 
-					함정: `friendId`가 수신자 식별의 정본이고 오면 `friendName`을 무시함. 이름으로 찾으면 한 글자만 틀려도 번호 없는 친구 행이 새로 생겨 도착 알림(FR-017)이 조용히 끊김 — 화면이 친구를 고를 수 있으면 반드시 `friendId`를 보낼 것. 남의 친구와 없는 친구는 같은 `FRIEND404_1`임(존재 여부를 알려주지 않음).
+					함정: `friendId`가 수신자 식별의 정본이고 오면 `friendName`을 무시함. 이름으로 찾으면 한 글자만 틀려도 번호 없는 친구 행이 새로 생겨 도착 알림이 조용히 끊김 — 화면이 친구를 고를 수 있으면 반드시 `friendId`를 보낼 것. 남의 친구와 없는 친구는 같은 `FRIEND404_1`임(존재 여부를 알려주지 않음).
 
 					응답 `result`: `{ "token", "nickname" }`.""")
 	@ApiResponses({
@@ -152,13 +152,13 @@ public class GiftController {
 	 */
 	@Operation(summary = "편지 사진 업로드",
 			description = """
-					명세서 5.4 #28임. **로그인 필수임.** `multipart/form-data`이고 파트 이름은 `files`(복수)임.
+					**로그인 필수임.** `multipart/form-data`이고 파트 이름은 `files`(복수)임.
 
 					파일당 10MB 이하, 최대 5장, `image/jpeg`·`image/png`·`image/webp`·`image/gif`만 받음. 함정: **선언한 Content-Type과 실제 파일 형식이 같아야 함** — JPEG 바이트를 `image/png`로 보내면 거부됨(확장자를 선언 형식으로 정하기 때문임).
 
-					받은 URL은 #11 `POST /api/v1/gift`의 `letterImageUrls`에 그대로 실을 것. 파일은 서버 로컬 디스크에 있어 **재배포하면 사라짐**.
+					받은 URL은 `POST /api/v1/gift`의 `letterImageUrls`에 그대로 실을 것. 파일은 서버 로컬 디스크에 있어 **재배포하면 사라짐**.
 
-					화면 미구현 상태임(명세서 5.0).""")
+					""")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "업로드 성공. 발급된 URL 목록을 반환함",
 					content = @Content(examples = @ExampleObject(name = "성공", value = """
@@ -210,11 +210,11 @@ public class GiftController {
 	 */
 	@Operation(summary = "비회원 초대 열람",
 			description = """
-					명세서 5.4 #12임. **인증 불필요임**(ADR-006, ADR-013 결정 4).
+					**인증 불필요임**.
 
-					동의 전에는 `{ "needConsent": true, "nickname": "다정한 호저" }`만 줌 — **`letterBody` 키 자체가 없음**(FR-015). 동의 후에는 `needConsent: false`와 함께 `letterBody`, `product`, `openedAt`이 붙고, 사진을 넣어 보냈으면 `letterImageUrls`가, 색상을 골랐으면 `letterColor`가 붙음.
+					동의 전에는 `{ "needConsent": true, "nickname": "다정한 호저" }`만 줌 — **`letterBody` 키 자체가 없음**. 동의 후에는 `needConsent: false`와 함께 `letterBody`, `product`, `openedAt`이 붙고, 사진을 넣어 보냈으면 `letterImageUrls`가, 색상을 골랐으면 `letterColor`가 붙음.
 
-					함정: **값이 없으면 그 키도 없음**(NON_NULL 계약) — 키 존재를 전제로 파싱하지 말 것. 본문을 보려면 #13 `POST /api/v1/invitations/{token}` 동의를 먼저 거쳐야 함.""")
+					함정: **값이 없으면 그 키도 없음**(NON_NULL 계약) — 키 존재를 전제로 파싱하지 말 것. 본문을 보려면 `POST /api/v1/invitations/{token}` 동의를 먼저 거쳐야 함.""")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "동의 전이면 `needConsent: true`와 닉네임만, 동의 후면 본문과 상품이 함께 옴",
 					content = @Content(examples = { @ExampleObject(name = "동의 전", value = """
@@ -240,11 +240,11 @@ public class GiftController {
 	/** 동의와 열람임. 동의 전에는 본문을 주지 않으므로 이 호출이 열람의 전제임(FR-015). */
 	@Operation(summary = "동의와 열람",
 			description = """
-					명세서 5.4 #13임. **인증 불필요임.** 요청 본문 없음.
+					**인증 불필요임.** 요청 본문 없음.
 
-					동의와 최초 열람을 기록함. 함정: **재방문은 시각을 갈아치우지 않음** — 최초 열람 시각만 남음. 동의 전에는 #12가 `letterBody`를 주지 않으므로 이 호출이 열람의 전제임(FR-015).
+					동의와 최초 열람을 기록함. 함정: **재방문은 시각을 갈아치우지 않음** — 최초 열람 시각만 남음. 동의 전에는 `GET /api/v1/invitations/{token}`가 `letterBody`를 주지 않으므로 이 호출이 열람의 전제임.
 
-					응답 `result`는 `{ "ok": true }` 고정임(명세서 5.4는 #13의 `result` 형태를 따로 적지 않아 실제 구현 값을 예시로 실음).""")
+					응답 `result`는 `{ "ok": true }` 고정임.""")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "동의와 최초 열람 기록 성공",
 					content = @Content(examples = @ExampleObject(name = "성공", value = """
@@ -275,9 +275,9 @@ public class GiftController {
 	 */
 	@Operation(summary = "받은 선물을 내 제품으로 등록",
 			description = """
-					명세서 5.4 #29임. 요청 본문 없음.
+					요청 본문 없음.
 
-					함정: **경로는 `/api/v1/invitations/**` 아래지만 이것만 로그인이 필요함** — 보유 제품에 주인이 있어야 하기 때문임. 동의와 열람(#13)을 마친 뒤에만 되고, 다시 눌러도 새 행을 만들지 않고 같은 결과를 줌(멱등).
+					함정: **경로는 `/api/v1/invitations/**` 아래지만 이것만 로그인이 필요함** — 보유 제품에 주인이 있어야 하기 때문임. 동의와 열람(`POST /api/v1/invitations/{token}`)을 마친 뒤에만 되고, 다시 눌러도 새 행을 만들지 않고 같은 결과를 줌(멱등).
 
 					`GIFT404_1`은 없는 토큰과 **다른 회원에게 지정된 선물**을 함께 덮음 — 존재 여부를 알려주지 않으려고 같은 코드를 씀.
 
@@ -332,13 +332,13 @@ public class GiftController {
 	/** FR-018 옵션 변경 문의임. 동의·열람과 같은 비회원 경로라 로그인을 요구하지 않음. */
 	@Operation(summary = "옵션 변경 문의",
 			description = """
-					명세서 5.4 #30임. **인증 불필요임**(동의·열람과 같은 비회원 경로임).
+					**인증 불필요임**(동의·열람과 같은 비회원 경로임).
 
 					요청 `{ "reason": "SIZE" | "COLOR" | "ALREADY_OWNED" | "ETC" }`이고 그 넷 밖은 `GIFT400_4`임. 함정: **선물당 1회임** — 두 번째 호출은 `GIFT409_1`임. 열람 전에는 `GIFT400_3`임.
 
-					발송자는 알림으로 사유를 봄 — `type`이 `CHANGE_REQ_SIZE` 형태임(명세서 5.8). 사유 전용 컬럼을 만들지 않고 타입에 실은 결정이라 이 표기가 계약임.
+					발송자는 알림으로 사유를 봄 — `type`이 `CHANGE_REQ_SIZE` 형태임. 사유 전용 컬럼을 만들지 않고 타입에 실은 결정이라 이 표기가 계약임.
 
-					응답 `result`: `{ "reason", "officialUrl" }`. 화면 미구현 상태임(명세서 5.0).""")
+					응답 `result`: `{ "reason", "officialUrl" }`. """)
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "문의 접수 성공",
 					content = @Content(examples = @ExampleObject(name = "성공", value = """

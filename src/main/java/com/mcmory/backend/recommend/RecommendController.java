@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "추천",
-		description = "관계 태그와 예산으로 선물을 추천하고(#8), 그 결과를 스냅샷으로 재조회하며(#9), 친구에게 귀속시키는(#10) 발송자 흐름임. 셋 다 로그인 필수임. 실패는 문구가 아니라 `code`로 분기할 것.")
+		description = "관계 태그와 예산으로 선물을 추천하고, 추천 결과 스냅샷을 재조회하거나 친구에게 귀속함. 모든 엔드포인트는 인증 필수임. 실패는 `message`가 아니라 응답의 `code`로 분기할 것.")
 @SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/recommend")
@@ -72,7 +72,7 @@ public class RecommendController {
 	 * 스타일링(#32)과 같은 옵트인 계약이라 화면이 새로 배울 것이 없음. `true`여도 `bedrock.enabled=false`거나 모델이 형식을
 	 * 어기면 규칙 결과가 나가는데 그것은 오류가 아니라 정상 동작임.
 	 */
-	@Operation(summary = "추천 생성 (#8)",
+	@Operation(summary = "추천 생성",
 			description = """
 					관계 태그와 예산으로 선물을 추천함. 로그인 필수임. 호출마다 이력이 남음.
 
@@ -82,7 +82,7 @@ public class RecommendController {
 
 					함정 3 — `friendId`는 선택임. 오면 그 친구의 취향(`taste_profile`)을 점수에 반영하고, 안 보내면 이 필드가 생기기 전과 결과가 완전히 같음. 읽는 키는 복수형 `colors`·`styles`와 단수형 `color`·`style` 넷뿐이고 가방 디자인은 안 읽음. 다중 선택은 축당 한 번만 가산함.
 
-					함정 4 — `reasonType`은 `PERSONAL`과 `GENERAL` 둘이고 **첫 항목만 PERSONAL이 될 수 있음**(ADR-009).
+					함정 4 — `reasonType`은 `PERSONAL`과 `GENERAL` 둘이고 **첫 항목만 PERSONAL이 될 수 있음**.
 
 					함정 5 — `FRIEND404_1`은 `friendId`를 보내는 경우에만 옴.
 
@@ -153,7 +153,7 @@ public class RecommendController {
 	 * TC-009 스냅샷 재조회임. 동결되는 것은 상품 구성과 순위와 근거이고 상품의 이름과 가격은 현재 값임 — 재계산은 하지 않지만 표시값은 동결하지
 	 * 않음.
 	 */
-	@Operation(summary = "추천 스냅샷 재조회 (#9)",
+	@Operation(summary = "추천 스냅샷 재조회 (`GET /api/v1/recommend/{id}`)",
 			description = """
 					생성 시점의 추천을 그대로 다시 봄. 로그인 필수임. 재계산하지 않음.
 
@@ -163,7 +163,7 @@ public class RecommendController {
 
 					함정 3 — 경로 값이 숫자가 아니면(`/api/v1/recommend/abc`) `VALID400_0`임.
 
-					응답 `result`는 `{ "recommendationId", "context", "savedFriendId", "createdAt", "results": [{..., "rankNo": 1}] }` 형태임.
+					응답 `result`는 `{ "recommendationId", "context", "savedFriendId", "createdAt", "results": [{.., "rankNo": 1}] }` 형태임.
 					""")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "재조회 성공임. `result`는 생성 시점의 구성과 순위와 근거임",
@@ -209,8 +209,8 @@ public class RecommendController {
 	}
 
 	/** FR-011 취향 저장 귀속임. 같은 친구로 다시 불러도 200이고 행이 늘지 않음(TC-011). */
-	@Operation(summary = "추천을 친구에게 귀속 (#10)", description = """
-			FR-011 취향 저장 귀속임. 로그인 필수임.
+	@Operation(summary = "추천을 친구에게 귀속", description = """
+			취향 저장 귀속임. 로그인 필수임.
 
 			함정 1 — 같은 친구로 다시 불러도 200이고 행이 늘지 않음(TC-011). 다른 친구로 바꾸려 하면 `REC400_2`임.
 

@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "친구",
-		description = "발송자가 선물을 보낼 친구를 등록·수정·삭제하고, 취향 요약을 저장하거나 수신자 설문 링크를 발급하는 도메인임. 전부 인증 필수이며 자기 친구만 다룸. 실패는 문구가 아니라 봉투의 `code`로 분기할 것 — 주요 코드는 FRIEND400_1(이름 길이), FRIEND400_2(전화번호 형식), FRIEND404_1(친구 없음 또는 남의 친구), FRIEND409_1(전화번호 중복), FRIEND409_2(수정 시 번호 불일치)임. 회원당 친구 수 상한은 서버가 걸지 않으나 화면이 네 칸이라 5명째부터는 조회도 수정도 안 되는 고아 행이 됨")
+		description = "발송자가 선물을 보낼 친구를 등록·수정·삭제하고, 취향 요약을 저장하거나 수신자 설문 링크를 발급함. 모든 엔드포인트는 인증 필수이며 로그인한 사용자가 등록한 친구만 다룸. 실패는 `message`가 아니라 응답의 `code`로 분기할 것. 주요 코드는 `FRIEND400_1`(이름 길이), `FRIEND400_2`(전화번호 형식), `FRIEND404_1`(친구 없음 또는 다른 사용자의 친구), `FRIEND409_1`(전화번호 중복), `FRIEND409_2`(수정 시 번호 불일치)임.")
 @SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/friends")
@@ -41,21 +41,21 @@ public class FriendController {
 		this.currentMember = currentMember;
 	}
 
-	@Schema(name = "FriendCreateRequest", description = "친구 등록 요청임(명세서 5.5 #16)")
+	@Schema(name = "FriendCreateRequest", description = "친구 등록 요청임")
 	public record CreateRequest(
 			@Schema(description = "친구 이름. 앞뒤 공백을 제거한 뒤 1자 이상 20자 이하여야 함(컬럼이 VARCHAR(20)임). 벗어나면 FRIEND400_1임",
 					example = "김민지", requiredMode = Schema.RequiredMode.REQUIRED) String name,
-			@Schema(description = "친구 전화번호. `010`으로 시작하는 10에서 11자리이며 하이픈과 공백은 허용하되 숫자만 저장함(ADR-008). 형식이 어긋나면 FRIEND400_2, 같은 회원이 같은 번호를 다시 등록하면 FRIEND409_1임",
+			@Schema(description = "친구 전화번호. `010`으로 시작하는 10에서 11자리이며 하이픈과 공백은 허용하되 숫자만 저장함. 형식이 어긋나면 FRIEND400_2, 같은 회원이 같은 번호를 다시 등록하면 FRIEND409_1임",
 					example = "010-1234-5678", requiredMode = Schema.RequiredMode.REQUIRED) String phone) {
 	}
 
-	@Schema(name = "FriendIdRequest", description = "친구 삭제 요청임(명세서 5.5 #18)")
+	@Schema(name = "FriendIdRequest", description = "친구 삭제 요청임")
 	public record IdRequest(@Schema(
 			description = "삭제할 친구의 id. 목록 조회(`GET /api/v1/friends`)의 `result.list[].id`임. 없는 친구와 남의 친구를 같은 FRIEND404_1로 다룸 — 갈라주면 id를 순번으로 훑어 남의 친구 존재 여부를 알아낼 수 있음",
 			example = "1", requiredMode = Schema.RequiredMode.REQUIRED) Long id) {
 	}
 
-	@Schema(name = "FriendTasteRequest", description = "발송자가 고른 취향 요약을 친구에게 귀속하는 요청임(명세서 5.5 #17, FR-011, ADR-009)")
+	@Schema(name = "FriendTasteRequest", description = "발송자가 고른 취향 요약을 친구에게 귀속하는 요청임")
 	public record TasteRequest(
 			@Schema(description = "취향을 귀속할 친구의 id. 없는 친구와 남의 친구는 FRIEND404_1임", example = "1",
 					requiredMode = Schema.RequiredMode.REQUIRED) Long id,
@@ -63,7 +63,7 @@ public class FriendController {
 					example = "블랙, 미니멀", requiredMode = Schema.RequiredMode.NOT_REQUIRED) String tasteSummary) {
 	}
 
-	@Schema(name = "FriendUpdateRequest", description = "친구 수정 요청임. **이름만 바뀜**(명세서 5.5 #31, FR-005)")
+	@Schema(name = "FriendUpdateRequest", description = "친구 수정 요청임. **이름만 바뀜**")
 	public record UpdateRequest(
 			@Schema(description = "바꿀 이름. 앞뒤 공백 제거 후 1자 이상 20자 이하여야 하며 벗어나면 FRIEND400_1임", example = "김민지",
 					requiredMode = Schema.RequiredMode.REQUIRED) String name,
@@ -72,7 +72,7 @@ public class FriendController {
 	}
 
 	@Operation(summary = "친구 목록 조회",
-			description = "로그인한 회원의 친구를 취향 요약(`tasteSummary`)과 함께 반환함(명세서 5.5 #15). 인증 필수이며 세션이 없으면 AUTH401_1임. 삭제된 친구는 개인정보 필드가 파기돼 목록에 나오지 않음(ADR-003)")
+			description = "로그인한 회원의 친구를 취향 요약(`tasteSummary`)과 함께 반환함. 인증 필수이며 세션이 없으면 AUTH401_1임. 삭제된 친구는 개인정보 필드가 파기돼 목록에 나오지 않음")
 	@ApiResponse(responseCode = "200", description = "조회 성공. `result.list`의 각 원소는 id·name·phone·tasteSummary임",
 			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "성공", value = """
 					{
@@ -101,7 +101,7 @@ public class FriendController {
 
 	/** FR-004 친구 등록임. */
 	@Operation(summary = "친구 등록",
-			description = "이름과 전화번호로 친구를 등록함(명세서 5.5 #16, FR-004). 인증 필수임. `name`은 1자에서 20자, `phone`은 `010` 시작 10에서 11자리이며 하이픈과 공백을 허용함. 같은 번호를 다시 등록하면 FRIEND409_1임")
+			description = "이름과 전화번호로 친구를 등록함. 인증 필수임. `name`은 1자에서 20자, `phone`은 `010` 시작 10에서 11자리이며 하이픈과 공백을 허용함. 같은 번호를 다시 등록하면 FRIEND409_1임")
 	@ApiResponse(responseCode = "200", description = "등록 성공",
 			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "성공", value = """
 					{
@@ -154,7 +154,7 @@ public class FriendController {
 
 	/** FR-006 삭제임. ADR-003에 따라 개인정보는 즉시 파기함. */
 	@Operation(summary = "친구 삭제",
-			description = "친구를 soft delete하되 `name`과 `phone`은 DB에서 즉시 NULL로 파기함(명세서 5.5 #18, FR-006, ADR-003). 편지함 표시에서만 `삭제된 친구`로 남음. 인증 필수이고 남의 친구 id는 FRIEND404_1임. **화면 미구현**이라 현재 호출 지점이 없음(명세서 5.0)")
+			description = "친구를 soft delete하되 `name`과 `phone`은 DB에서 즉시 NULL로 파기함. 편지함 표시에서만 `삭제된 친구`로 남음. 인증 필수이고 남의 친구 id는 FRIEND404_1임.")
 	@ApiResponse(responseCode = "200", description = "삭제 성공",
 			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "성공", value = """
 					{
@@ -191,7 +191,7 @@ public class FriendController {
 	 * **취향 저장 경로를 건드리지 말 것.** 프론트가 그 계약에 이미 묶여 있음.
 	 */
 	@Operation(summary = "친구 수정(이름만)",
-			description = "친구의 이름만 바꿈(명세서 5.5 #31, FR-005). 인증 필수임. `phone`을 함께 보내되 **숫자가 같아야 함** — 하이픈 표기 차이는 허용하고 숫자가 다르면 FRIEND409_2로 거절하고 새 등록을 안내함(번호가 바뀌면 다른 사람). `phone`을 빼면 FRIEND400_2임. **화면 미구현**임(명세서 5.0)")
+			description = "친구의 이름만 바꿈. 인증 필수임. `phone`을 함께 보내되 **숫자가 같아야 함** — 하이픈 표기 차이는 허용하고 숫자가 다르면 FRIEND409_2로 거절하고 새 등록을 안내함(번호가 바뀌면 다른 사람). `phone`을 빼면 FRIEND400_2임.")
 	@ApiResponse(responseCode = "200", description = "수정 성공",
 			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "성공", value = """
 					{
@@ -252,7 +252,7 @@ public class FriendController {
 	}
 
 	@Schema(name = "FriendSurveyRequest",
-			description = "`HOME-02` 질문 선별 요청임(명세서 5.5 #33, FEAT-W003). **본문 전체가 선택임** — 안 보내면 저장된 선택을 그대로 두고 링크만 발급함")
+			description = "`HOME-02` 질문 선별 요청임. **본문 전체가 선택임** — 안 보내면 저장된 선택을 그대로 두고 링크만 발급함")
 	public record SurveyRequest(@Schema(
 			description = "수신자에게 물어볼 축임. 허용값 셋은 `colors`·`styles`·`bags`이고 순서는 무시함. **빈 배열은 생략과 다르게 `FRIEND400_4`임** — 생략은 저장값 유지이고 빈 배열은 축을 하나도 안 켠 것임. `colors`와 `styles`를 둘 다 끄는 것과 허용값 밖의 축도 같은 코드임(가방만으로는 추천이 안 바뀜). 저장된 적이 없는 친구는 세 축 전부임",
 			example = "[\"colors\",\"styles\"]", requiredMode = Schema.RequiredMode.NOT_REQUIRED) List<String> axes) {
@@ -260,7 +260,7 @@ public class FriendController {
 
 	/** `Start-02` 설문 링크 발급임. 오리진은 서버가 모르므로 `path`만 주고 앞자리는 화면이 붙임. */
 	@Operation(summary = "수신자 설문 링크 발급",
-			description = "`Start-02` 설문 토큰을 멱등으로 발급함(명세서 5.5 #33과 5.5-1). 인증 필수이고 남의 친구도 FRIEND404_1임. **오리진은 서버가 모르므로 `path`만 주고 앞자리는 화면이 붙임.** 발급한 링크를 발송자가 문자로 보내면 수신자가 비회원 경로(`GET`과 `POST /api/v1/surveys/{token}`)에서 동의하고 취향에 답함.\n\n**`axes`는 `HOME-02` 질문 선별임(FEAT-W003).** 켠 축만 `GET /api/v1/surveys/{token}`이 돌려주고 그 밖의 축에 답하면 제출이 `FRIEND400_4`로 막힘. **토큰은 멱등이고 `axes`는 보낸 호출에서만 덮어씀** — 토글을 고쳐 다시 저장하는 것이 정상 경로이고 이미 보낸 링크는 살아 있어야 함. 축을 안 보낸 호출은 저장값을 유지함")
+			description = "`Start-02` 설문 토큰을 멱등으로 발급함. 인증 필수이고 남의 친구도 FRIEND404_1임. **오리진은 서버가 모르므로 `path`만 주고 앞자리는 화면이 붙임.** 발급한 링크를 발송자가 문자로 보내면 수신자가 비회원 경로(`GET`과 `POST /api/v1/surveys/{token}`)에서 동의하고 취향에 답함.\n\n**`axes`는 `HOME-02` 질문 선별임.** 켠 축만 `GET /api/v1/surveys/{token}`이 돌려주고 그 밖의 축에 답하면 제출이 `FRIEND400_4`로 막힘. **토큰은 멱등이고 `axes`는 보낸 호출에서만 덮어씀** — 토글을 고쳐 다시 저장하는 것이 정상 경로이고 이미 보낸 링크는 살아 있어야 함. 축을 안 보낸 호출은 저장값을 유지함")
 	@ApiResponse(responseCode = "200", description = "발급 성공. `token`은 24자이고 `path`는 `/s/{token}`이며 `axes`는 저장된 질문 선별임",
 			content = @Content(mediaType = "application/json", examples = @ExampleObject(name = "성공", value = """
 					{
@@ -312,7 +312,7 @@ public class FriendController {
 	 * 함.
 	 */
 	@Operation(summary = "취향 저장 귀속",
-			description = "발송자가 고른 취향 요약을 친구에게 귀속해 저장함(명세서 5.5 #17, FR-011, ADR-009). 인증 필수임. `tasteSummary`가 없으면 빈 요약으로 저장됨. **수신자 본인이 답한 취향(`source`가 `INVITE_ANSWER`)이 이미 있으면 덮지 않고 `updated`를 false로 돌려줌** — 200만 보고 저장됐다고 오인하지 말고 화면이 `updated`를 보고 안내할 것. 409로 하지 않은 이유는 실패가 아니라 이미 더 신뢰할 값이 있는 것이고 재호출이 안전해야 하기 때문임")
+			description = "발송자가 고른 취향 요약을 친구에게 귀속해 저장함. 인증 필수임. `tasteSummary`가 없으면 빈 요약으로 저장됨. **수신자 본인이 답한 취향(`source`가 `INVITE_ANSWER`)이 이미 있으면 덮지 않고 `updated`를 false로 돌려줌** — 200만 보고 저장됐다고 오인하지 말고 화면이 `updated`를 보고 안내할 것. 409로 하지 않은 이유는 실패가 아니라 이미 더 신뢰할 값이 있는 것이고 재호출이 안전해야 하기 때문임")
 	@ApiResponse(responseCode = "200", description = "저장 성공, 또는 본인 답변 보호로 저장하지 않음. 두 경우 모두 200이며 `result.updated`로 구분함",
 			content = @Content(mediaType = "application/json", examples = { @ExampleObject(name = "저장됨", value = """
 					{
