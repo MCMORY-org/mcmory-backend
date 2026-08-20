@@ -238,7 +238,7 @@ public class OwnedProductController {
 	}
 
 	@Operation(summary = "카테고리별 관리 방법 (`GET /api/v1/owned/{id}/care-guide`)",
-			description = "인증 필수임. 보유 제품의 상품 카테고리로 관리 안내 문구를 반환함. 카테고리는 시드 기준 `가방`·`지갑`·`가죽 소품` 셋이고 그 밖은 오류 대신 공통 기본 안내를 줌. **시연용 일반 안내이지 MCM 공식 관리 지침이 아님** — 화면에도 그렇게 표기할 것. 없거나 남의 제품, 삭제된 제품, 상품 연결이 끊긴 제품은 모두 `OWNED404_2`임. 화면 미구현 상태의 엔드포인트임.")
+			description = "인증 필수임. 보유 제품의 상품 카테고리로 관리 안내 문구를 반환함. 카테고리는 시드 기준 `가방`·`지갑`·`가죽 소품` 셋이고 그 밖은 오류 대신 공통 기본 안내를 줌. **시연용 일반 안내이지 MCM 공식 관리 지침이 아님** — 화면에도 그렇게 표기할 것. 없거나 남의 제품, 삭제된 제품, 상품 연결이 끊긴 제품은 모두 `OWNED404_2`임.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "관리 방법 반환",
 					content = @Content(mediaType = "application/json",
@@ -374,7 +374,7 @@ public class OwnedProductController {
 	}
 
 	@Operation(summary = "보유 제품 삭제 (#21)",
-			description = "인증 필수임. 본인 소유의 삭제되지 않은 제품만 소프트 삭제함(`deletedAt` 표시이며 행을 지우지 않음). **id를 경로가 아니라 요청 본문으로 받음** — DELETE에 본문이 필요하므로 클라이언트 설정에 주의할 것. `id` 누락, 없는 id, 남의 제품, 이미 삭제된 제품은 모두 `OWNED404_2`로 동일하게 응답함(존재 여부 노출 방지). 화면 미구현 상태의 엔드포인트임.")
+			description = "인증 필수임. 본인 소유의 삭제되지 않은 제품만 소프트 삭제함(`deletedAt` 표시이며 행을 지우지 않음). **id를 경로가 아니라 요청 본문으로 받음** — DELETE에 본문이 필요하므로 클라이언트 설정에 주의할 것. `id` 누락, 없는 id, 남의 제품, 이미 삭제된 제품은 모두 `OWNED404_2`로 동일하게 응답함(존재 여부 노출 방지).")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "삭제 성공",
 					content = @Content(mediaType = "application/json",

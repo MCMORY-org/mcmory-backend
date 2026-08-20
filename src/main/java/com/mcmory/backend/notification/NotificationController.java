@@ -60,8 +60,9 @@ public class NotificationController {
 					example = "2026-08-11T10:20:30",
 					requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdAt,
 			@Schema(description = "읽은 시각임. **`null`이면 미읽음이고 이 개수가 곧 `unread`임.** "
-					+ "개별 읽음 경로가 없어 `PATCH /api/v1/notifications` 전체 읽음으로만 채워지므로 선택임", example = "2026-08-11T09:30:00",
-					nullable = true, requiredMode = Schema.RequiredMode.NOT_REQUIRED) LocalDateTime readAt){
+					+ "개별 읽음 경로가 없어 `POST /api/v1/notifications/read` 전체 읽음으로만 채워지므로 선택임",
+					example = "2026-08-11T09:30:00", nullable = true,
+					requiredMode = Schema.RequiredMode.NOT_REQUIRED) LocalDateTime readAt){
 	}
 
 	@Operation(summary = "알림 목록과 미읽음 수 조회",
