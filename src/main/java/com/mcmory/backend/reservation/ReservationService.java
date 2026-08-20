@@ -52,7 +52,7 @@ public class ReservationService {
 	}
 
 	public record ReservationView(
-			@Schema(description = "예약 id. 취소(#25) 요청 본문의 `id`에 그대로 넣는 값임", example = "1",
+			@Schema(description = "예약 id. 취소 요청 본문의 `id`에 그대로 넣는 값임", example = "1",
 					requiredMode = Schema.RequiredMode.REQUIRED) Long id,
 			@Schema(description = "방문 날짜 `YYYY-MM-DD`임", example = "2026-08-20",
 					requiredMode = Schema.RequiredMode.REQUIRED) LocalDate reserveDate,

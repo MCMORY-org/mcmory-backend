@@ -30,8 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * storeId와 date를 함께 주면 슬롯 상태를 덧붙임. 화면이 매장 선택과 시간 선택을 한 흐름으로 처리해 호출을 나누지 않음.
  */
-@Tag(name = "매장",
-		description = "FR-025 매장 찾기와 예약 슬롯 조회임. 명세서 5.7절(#22)이 계약 정본이고, 절 전체가 이번 제출 범위밖이라 화면은 없으나 계약과 구현은 유지함")
+@Tag(name = "매장", description = "매장을 찾고 예약 가능한 슬롯을 조회함.")
 @RestController
 @RequestMapping("/api/v1/stores")
 public class StoreController {
@@ -52,8 +51,8 @@ public class StoreController {
 	}
 
 	public record StoreView(
-			@Schema(description = "매장 id. 예약 생성(#24)의 `storeId`와 슬롯 조회 쿼리 `storeId`에 그대로 넣는 값임", example = "1",
-					requiredMode = Schema.RequiredMode.REQUIRED) Long id,
+			@Schema(description = "매장 id. 예약 생성(`POST /api/v1/reservations`)의 `storeId`와 슬롯 조회 쿼리 `storeId`에 그대로 넣는 값임",
+					example = "1", requiredMode = Schema.RequiredMode.REQUIRED) Long id,
 			@Schema(description = "매장 이름", example = "MCM 강남 본점",
 					requiredMode = Schema.RequiredMode.REQUIRED) String name,
 			@Schema(description = "매장 주소", example = "서울 강남구 압구정로",
@@ -62,7 +61,7 @@ public class StoreController {
 					example = "1.2", requiredMode = Schema.RequiredMode.REQUIRED) double distanceKm,
 			@Schema(description = "마감 시각 `HH:mm`임", example = "20:00",
 					requiredMode = Schema.RequiredMode.REQUIRED) String closeTime,
-			@Schema(description = "수리 가능 여부. 함정 — 매장의 **전역** 플래그이고 제품별 수리 카테고리 매칭은 구현하지 않았음(명세서 6장). 쿼리 `repair=1`이 보는 값이 이것임",
+			@Schema(description = "수리 가능 여부. 함정 — 매장의 **전역** 플래그이고 제품별 수리 카테고리 매칭은 구현하지 않았음. 쿼리 `repair=1`이 보는 값이 이것임",
 					example = "true", requiredMode = Schema.RequiredMode.REQUIRED) boolean repairAvailable,
 			@Schema(description = "조회 시각이 매장 영업 시간 안인지 여부임. 요청 시점마다 달라지는 계산값임", example = "true",
 					requiredMode = Schema.RequiredMode.REQUIRED) boolean openNow,
@@ -71,7 +70,7 @@ public class StoreController {
 	}
 
 	public record SlotView(@Schema(
-			description = "슬롯 시각 `HH:mm`임. 10개 고정(`10:00`, `11:00`, `13:00`부터 `20:00`까지 매시)이고 **12시는 비활성이 아니라 아예 없음**(점심 휴게). 예약 생성(#24)의 `timeSlot`에 그대로 넣는 값임",
+			description = "슬롯 시각 `HH:mm`임. 10개 고정(`10:00`, `11:00`, `13:00`부터 `20:00`까지 매시)이고 **12시는 비활성이 아니라 아예 없음**(점심 휴게). 예약 생성(`POST /api/v1/reservations`)의 `timeSlot`에 그대로 넣는 값임",
 			example = "13:00", requiredMode = Schema.RequiredMode.REQUIRED) String slot,
 			@Schema(description = "슬롯 상태. `AVAILABLE`과 `DISABLED` **두 값뿐임**. 함정 — `PAST`는 state가 아니라 `reason`임",
 					example = "AVAILABLE", allowableValues = {
@@ -92,7 +91,7 @@ public class StoreController {
 
 	@Operation(summary = "매장 목록과 예약 슬롯 조회",
 			description = """
-					명세서 5.7절 #22임. **인증 불필요**(비회원 공개 경로).
+					**인증 불필요**(비회원 공개 경로).
 
 					필터 `repair`·`openNow`·`reservable`은 값이 `"1"`일 때만 켜지고 전부 AND로 결합함. 정렬은 거리 오름차순 고정임.
 
@@ -104,63 +103,62 @@ public class StoreController {
 
 					**함정 4**: `state`는 `AVAILABLE`과 `DISABLED` 두 값뿐임. `PAST`는 state가 아니라 `DISABLED`의 `reason`임(다른 사유는 `BOOKED`). `AVAILABLE`이면 `reason`은 `null`임.
 
-					**함정 5**: `repair=1`은 매장의 전역 `repairAvailable` 플래그만 봄. **제품별 수리 카테고리 매칭은 구현하지 않았음**(명세서 6장).
+					**함정 5**: `repair=1`은 매장의 전역 `repairAvailable` 플래그만 봄. **제품별 수리 카테고리 매칭은 구현하지 않았음**.
 
 					**함정 6**: `distanceKm`은 실제 거리 계산이 아니라 프로토타입 고정값임.
 
 					실패 코드는 없음 — 이 경로는 파라미터가 틀려도 에러 대신 빈 결과를 반환함.""")
 	@ApiResponse(responseCode = "200",
 			description = "성공. 봉투 `code`는 문자열 `\"200\"`임. `slots`는 `storeId`와 `date`를 함께 준 경우에만 채워지고 그 외에는 `null`임",
-			content = @Content(mediaType = "application/json",
-					examples = {
-							@ExampleObject(name = "목록만 (storeId·date 미지정)",
-									description = "명세서 5.7절 #22의 `slots`는 `null` 규칙", value = """
-											{
-											  "isSuccess": true,
-											  "code": "200",
-											  "message": "OK",
-											  "result": {
-											    "list": [
-											      {
-											        "id": 1,
-											        "name": "MCM 강남 본점",
-											        "address": "서울 강남구 압구정로",
-											        "distanceKm": 1.2,
-											        "closeTime": "20:00",
-											        "repairAvailable": true,
-											        "openNow": true,
-											        "reservable": true
-											      }
-											    ],
-											    "slots": null
-											  }
-											}"""),
-							@ExampleObject(name = "슬롯 포함 (storeId·date 동시 지정)",
-									description = "명세서 5.7절 #22의 슬롯 상태 규칙 — state는 두 값뿐이고 PAST는 reason임", value = """
-											{
-											  "isSuccess": true,
-											  "code": "200",
-											  "message": "OK",
-											  "result": {
-											    "list": [
-											      {
-											        "id": 1,
-											        "name": "MCM 강남 본점",
-											        "address": "서울 강남구 압구정로",
-											        "distanceKm": 1.2,
-											        "closeTime": "20:00",
-											        "repairAvailable": true,
-											        "openNow": true,
-											        "reservable": true
-											      }
-											    ],
-											    "slots": [
-											      { "slot": "10:00", "state": "DISABLED", "reason": "PAST" },
-											      { "slot": "11:00", "state": "DISABLED", "reason": "BOOKED" },
-											      { "slot": "13:00", "state": "AVAILABLE", "reason": null }
-											    ]
-											  }
-											}""") }))
+			content = @Content(mediaType = "application/json", examples = {
+					@ExampleObject(name = "목록만 (storeId·date 미지정)",
+							description = "`GET /api/v1/stores`의 `slots`는 `null` 규칙", value = """
+									{
+									  "isSuccess": true,
+									  "code": "200",
+									  "message": "OK",
+									  "result": {
+									    "list": [
+									      {
+									        "id": 1,
+									        "name": "MCM 강남 본점",
+									        "address": "서울 강남구 압구정로",
+									        "distanceKm": 1.2,
+									        "closeTime": "20:00",
+									        "repairAvailable": true,
+									        "openNow": true,
+									        "reservable": true
+									      }
+									    ],
+									    "slots": null
+									  }
+									}"""),
+					@ExampleObject(name = "슬롯 포함 (storeId·date 동시 지정)",
+							description = "`GET /api/v1/stores`의 슬롯 상태 규칙 — state는 두 값뿐이고 PAST는 reason임", value = """
+									{
+									  "isSuccess": true,
+									  "code": "200",
+									  "message": "OK",
+									  "result": {
+									    "list": [
+									      {
+									        "id": 1,
+									        "name": "MCM 강남 본점",
+									        "address": "서울 강남구 압구정로",
+									        "distanceKm": 1.2,
+									        "closeTime": "20:00",
+									        "repairAvailable": true,
+									        "openNow": true,
+									        "reservable": true
+									      }
+									    ],
+									    "slots": [
+									      { "slot": "10:00", "state": "DISABLED", "reason": "PAST" },
+									      { "slot": "11:00", "state": "DISABLED", "reason": "BOOKED" },
+									      { "slot": "13:00", "state": "AVAILABLE", "reason": null }
+									    ]
+									  }
+									}""") }))
 	@GetMapping
 	@Transactional(readOnly = true)
 	public CustomResponse<StoresResponse> stores(

@@ -106,8 +106,8 @@ public class RecommendService {
 
 	public record Result(
 			@Schema(description = "추천된 상품", requiredMode = Schema.RequiredMode.REQUIRED) ProductView product,
-			@Schema(description = "근거 유형. `PERSONAL`과 `GENERAL` 둘뿐이고 **첫 항목만 PERSONAL이 될 수 있음**(ADR-009)",
-					example = "PERSONAL", allowableValues = {
+			@Schema(description = "근거 유형. `PERSONAL`과 `GENERAL` 둘뿐이고 **첫 항목만 PERSONAL이 될 수 있음**", example = "PERSONAL",
+					allowableValues = {
 							"PERSONAL", "GENERAL" },
 					requiredMode = Schema.RequiredMode.REQUIRED) String reasonType,
 			@Schema(description = "근거 문구. `GENERAL`이면 고정 문구임", example = "블랙 계열을 좋아하신다고 하셔서 골랐어요",
@@ -117,8 +117,8 @@ public class RecommendService {
 	/** 저장된 결과를 읽을 때는 순위를 함께 돌려줌 — 재조회의 요점이 순위 동결이기 때문임. */
 	public record StoredResult(
 			@Schema(description = "추천된 상품", requiredMode = Schema.RequiredMode.REQUIRED) ProductView product,
-			@Schema(description = "근거 유형. `PERSONAL`과 `GENERAL` 둘뿐이고 **첫 항목만 PERSONAL이 될 수 있음**(ADR-009)",
-					example = "PERSONAL", allowableValues = {
+			@Schema(description = "근거 유형. `PERSONAL`과 `GENERAL` 둘뿐이고 **첫 항목만 PERSONAL이 될 수 있음**", example = "PERSONAL",
+					allowableValues = {
 							"PERSONAL", "GENERAL" },
 					requiredMode = Schema.RequiredMode.REQUIRED) String reasonType,
 			@Schema(description = "근거 문구. 생성 시점 값을 그대로 돌려줌 — 재계산하지 않음", example = "블랙 계열을 좋아하신다고 하셔서 골랐어요",
@@ -132,8 +132,8 @@ public class RecommendService {
 					requiredMode = Schema.RequiredMode.REQUIRED) Long recommendationId,
 			@Schema(description = "생성 시점의 조건 JSON. 키는 `relation`·`minBudget`·`maxBudget`과, 보냈을 때만 붙는 `friendId`임. "
 					+ "**예산 단위는 요청과 같은 만원임**", requiredMode = Schema.RequiredMode.REQUIRED) JsonNode context,
-			@Schema(description = "귀속된 친구 id. 아직 귀속하지 않았으면 `null`임 — 귀속은 #10이 함", example = "101",
-					requiredMode = Schema.RequiredMode.NOT_REQUIRED) Long savedFriendId,
+			@Schema(description = "귀속된 친구 id. 아직 귀속하지 않았으면 `null`임 — 귀속은 `POST /api/v1/recommend/{id}/save`가 함",
+					example = "101", requiredMode = Schema.RequiredMode.NOT_REQUIRED) Long savedFriendId,
 			@Schema(description = "추천 생성 시각", example = "2026-08-11T10:20:30",
 					requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdAt,
 			@Schema(description = "동결된 추천 결과. 순위 오름차순이고 최대 3건임",
@@ -141,12 +141,13 @@ public class RecommendService {
 	}
 
 	public record Created(
-			@Schema(description = "생성된 추천 id. 재조회(#9)와 선물 발송(#11)이 이 값을 씀", example = "3",
-					requiredMode = Schema.RequiredMode.REQUIRED) Long recommendationId,
+			@Schema(description = "생성된 추천 id. 재조회(`GET /api/v1/recommend/{id}`)와 선물 발송(`POST /api/v1/gift`)이 이 값을 씀",
+					example = "3", requiredMode = Schema.RequiredMode.REQUIRED) Long recommendationId,
 			@Schema(description = "**무엇이 3건을 골랐는지임.** `LLM`이면 후보 안에서 모델이 고르고 첫 문구까지 썼다는 뜻이고, `RULE`이면 규칙 결과임. "
 					+ "**후보 자체는 어느 쪽이든 항상 규칙이 만듦** — 모델은 그 밖으로 나갈 수 없음. "
-					+ "스타일링(#32)의 같은 이름 필드는 문구 작성 주체만 뜻하므로 의미가 다름. " + "**스냅샷 재조회(#9)에는 저장되지 않음** — 생성 응답 전용임",
-					example = "RULE", allowableValues = {
+					+ "스타일링(`GET /api/v1/owned/{id}/care-guide`)의 같은 이름 필드는 문구 작성 주체만 뜻하므로 의미가 다름. "
+					+ "**스냅샷 재조회(`GET /api/v1/recommend/{id}`)에는 저장되지 않음** — 생성 응답 전용임", example = "RULE",
+					allowableValues = {
 							"LLM", "RULE" },
 					requiredMode = Schema.RequiredMode.REQUIRED) String reasonSource,
 			@Schema(description = "추천 결과. 최대 3건임. 예산에 맞는 상품이 없으면 전체 카탈로그에서 고름",

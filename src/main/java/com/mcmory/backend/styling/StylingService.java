@@ -85,15 +85,13 @@ public class StylingService {
 			@Schema(description = "공식몰 링크임. `보러가기`가 새 탭으로 엶. 선택 — 상품에 링크가 없으면 `null`임",
 					example = "https://kr.mcmworldwide.com",
 					requiredMode = Schema.RequiredMode.NOT_REQUIRED) String officialUrl,
-			@Schema(description = "근거 유형임. **첫 항목만 `PERSONAL`이 될 수 있음**(ADR-009)", example = "PERSONAL",
-					allowableValues = {
-							"PERSONAL", "GENERAL" },
-					requiredMode = Schema.RequiredMode.REQUIRED) String reasonType,
+			@Schema(description = "근거 유형임. **첫 항목만 `PERSONAL`이 될 수 있음**", example = "PERSONAL", allowableValues = {
+					"PERSONAL", "GENERAL" }, requiredMode = Schema.RequiredMode.REQUIRED) String reasonType,
 			@Schema(description = "근거 문구임. `GENERAL`이면 고정 문구임", example = "평소 미니멀 스타일을 즐기시네요",
 					requiredMode = Schema.RequiredMode.REQUIRED) String reason){
 	}
 
-	@Schema(name = "StylingResult", description = "FR-023 AI 스타일링 응답임(화면 CONTINUE-02).")
+	@Schema(name = "StylingResult", description = "AI 스타일링 응답임(화면 CONTINUE-02).")
 	public record Result(
 			@Schema(description = "스타일링 기준이 된 보유 제품임", requiredMode = Schema.RequiredMode.REQUIRED) OwnedView product,
 			@Schema(description = "**첫 근거 문구를 무엇이 썼는지임.** `LLM`이면 모델이 쓴 것이고 `RULE`이면 규칙 문구로 폴백한 것임. "

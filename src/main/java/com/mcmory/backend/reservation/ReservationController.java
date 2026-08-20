@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "예약",
-		description = "매장 예약 조회·생성·취소. 명세서 5.7절(#23, #24, #25)이 계약 정본임. 전 엔드포인트 인증 필수이며 미인증은 AUTH401_1 반환. 절 전체가 이번 제출 `범위밖`이라 화면은 만들지 않으나 계약과 구현은 그대로 유지함(ADR-012 개정 이력 2026-08-11). 슬롯은 10개 고정(`10:00`, `11:00`, `13:00`부터 `20:00`까지 매시)이고 12시는 비활성이 아니라 아예 없음(점심 휴게).")
+		description = "매장 예약 조회·생성·취소를 다룸. 모든 엔드포인트는 인증 필수이며 미인증이면 `AUTH401_1`을 반환함. 예약 슬롯은 `10:00`, `11:00`, `13:00`부터 `20:00`까지 매시로 총 10개임. `12:00` 슬롯은 반환되지 않음.")
 @SecurityRequirement(name = OpenApiConfig.ACCESS_COOKIE)
 @RestController
 @RequestMapping("/api/v1/reservations")
@@ -63,7 +63,7 @@ public class ReservationController {
 	}
 
 	@Operation(summary = "내 예약 목록 조회",
-			description = "로그인한 회원 본인의 예약 목록을 반환함(명세서 5.7 #23). 인증 필수 — 세션이 없으면 `AUTH401_1`임. `result.list` 원소 필드는 `id`, `reserveDate`, `timeSlot`, `requestNote`, `storeName`, `productName` 여섯이며 `requestNote`는 null일 수 있음. 페이지네이션 없음.")
+			description = "로그인한 회원 본인의 예약 목록을 반환함. 인증 필수 — 세션이 없으면 `AUTH401_1`임. `result.list` 원소 필드는 `id`, `reserveDate`, `timeSlot`, `requestNote`, `storeName`, `productName` 여섯이며 `requestNote`는 null일 수 있음. 페이지네이션 없음.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "조회 성공",
 					content = @Content(mediaType = "application/json",
@@ -103,7 +103,7 @@ public class ReservationController {
 	}
 
 	@Operation(summary = "매장 예약 생성",
-			description = "매장과 보유 제품과 방문 일시로 예약을 만듦(명세서 5.7 #24). 인증 필수. 함정 셋 — (1) `ownedProductId`는 **내 것이고 삭제되지 않은 보유 제품만** 허용하며 남의 것이거나 누락이면 `RESV400_2`임, (2) 방문 시각이 현재로부터 1시간 이내면 `RESV400_4`로 거부함, (3) 같은 슬롯 동시 요청은 DB 유니크 제약이 한 명만 통과시켜 진 쪽이 `RESV409_1`을 받는데 **이는 오류가 아니라 정상 경로**이므로 다른 시간을 고르게 안내할 것. 자원을 만들지만 201이 아니라 200으로 응답함(명세서 6장).")
+			description = "매장과 보유 제품과 방문 일시로 예약을 만듦. 인증 필수. 함정 셋 — (1) `ownedProductId`는 **내 것이고 삭제되지 않은 보유 제품만** 허용하며 남의 것이거나 누락이면 `RESV400_2`임, (2) 방문 시각이 현재로부터 1시간 이내면 `RESV400_4`로 거부함, (3) 같은 슬롯 동시 요청은 DB 유니크 제약이 한 명만 통과시켜 진 쪽이 `RESV409_1`을 받는데 **이는 오류가 아니라 정상 경로**이므로 다른 시간을 고르게 안내할 것. 자원을 만들지만 201이 아니라 200으로 응답함.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "예약 성공",
 					content = @Content(mediaType = "application/json",
@@ -191,7 +191,7 @@ public class ReservationController {
 	}
 
 	@Operation(summary = "예약 취소",
-			description = "본인 예약을 취소함(명세서 5.7 #25). 인증 필수이고 요청 본문은 `{ \"id\": number }` 하나임. 함정 둘 — (1) **남의 예약과 없는 예약이 같은 `RESV404_1`임**(존재 여부를 알려주지 않음), (2) 방문 1시간 이내는 앱에서 취소할 수 없어 `RESV400_3`이며 매장 연락으로 안내할 것.")
+			description = "본인 예약을 취소함. 인증 필수이고 요청 본문은 `{ \"id\": number }` 하나임. 함정 둘 — (1) **남의 예약과 없는 예약이 같은 `RESV404_1`임**(존재 여부를 알려주지 않음), (2) 방문 1시간 이내는 앱에서 취소할 수 없어 `RESV400_3`이며 매장 연락으로 안내할 것.")
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "취소 성공",
 					content = @Content(mediaType = "application/json",
